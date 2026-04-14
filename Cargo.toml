@@ -1,0 +1,36 @@
+[package]
+name = "egui_select2"
+version = "0.1.0"
+edition = "2024"
+authors = ["Thomas Bellembois <thomas.bellembois@proton.me>"]
+description = "A select2 like multi select widget for egui"
+license = "GPL-3.0"
+repository = "https://github.com/tbellembois/egui_select2"
+homepage = "https://github.com/tbellembois/egui_select2"
+readme = "README.md"
+categories = ["database", "science"]
+keywords = ["egui","select2", "widget"]
+rust-version = "1.94.1"
+
+[dependencies]
+eframe = "0.34.1"
+egui = "0.34.1"
+
+[dev-dependencies]
+egui_extras = { version = "0.34.1", features = ["all_loaders"] }
+image = { version = "0.25", features = ["png"] }
+ehttp = "0.7.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1.0.149"
+
+[[example]]
+name = "basic"
+path = "examples/src/basic.rs"
+
+[[example]]
+name = "pictures"
+path = "examples/src/pictures.rs"
+
+[[example]]
+name = "remote"
+path = "examples/src/remote.rs"
