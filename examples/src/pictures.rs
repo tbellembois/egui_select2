@@ -69,6 +69,11 @@ impl eframe::App for MyApp {
                 "Loaded: {}",
                 self.my_select.suggestions.items.len()
             ));
+            ui.separator();
+            ui.label("Selected:");
+            self.my_select.selected.iter().for_each(|item| {
+                ui.label(format!("{:?} {}", item.id, item.label.clone()));
+            });
         });
 
         let ctx = ui.ctx();

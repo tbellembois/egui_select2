@@ -33,7 +33,7 @@ pub struct SelectItems {
 /// }
 ///
 /// // Initialize your select with default values.
-/// // And define your load_suggestions function.
+/// // And attach your load_suggestions function.
 /// impl Default for MyApp {
 ///     fn default() -> Self {
 ///         let mut my_select = EguiSelect2::default();

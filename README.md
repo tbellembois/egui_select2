@@ -1,6 +1,6 @@
 # A select2 like widget for egui
 
-Support local or remote fetching data.
+Support local or remote data fetching.
 Possible custom rendering of the drop down items.
 
 There is space for improvements. Pull requests are welcome.
@@ -12,6 +12,108 @@ There is space for improvements. Pull requests are welcome.
 ## Inspiration
 
 <https://select2.org/>
+
+## Usage
+
+Typical usage in egui:
+
+Define your select in your app state.
+
+```
+struct MyApp {
+    my_select: EguiSelect2,
+...
+}
+```
+
+Define your load_suggestions function.
+
+```
+fn my_load_suggestions(limit: usize, offset: usize, query: &str) -> SelectItems {
+...
+SelectItems { items, total }
+}
+```
+
+Initialize your select with default values.
+And attach your load_suggestions function.
+
+```
+impl Default for MyApp {
+    fn default() -> Self {
+        let mut my_select = EguiSelect2::default();
+        // required
+        my_select.load_suggestions = Box::new(my_load_suggestions);
+
+        Self { my_select }
+    }
+}
+```
+
+Use the select in your UI.
+Don't forget to call `check_loading` before `ui`.
+
+```
+impl eframe::App for MyApp {
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        // required
+        self.my_select.check_loading();
+        self.my_select.ui(ui);
+    }
+}
+```
+
+## Parameters
+
+-> The function to load suggestions. REQUIRED
+`load_suggestions: Box<dyn Fn(usize, usize, &str) -> SelectItems>`
+
+-> The function to format a suggestion in the dropdown.
+`format_suggestion: Box<dyn Fn(&mut Ui, bool, &SelectItem) -> Response>`
+
+-> The maximum number of suggestions to load at once.
+`limit: usize`
+
+-> The minimum number of characters required to trigger a suggestion load.
+`min_input_length: usize`
+
+-> The scroll max height.
+`scroll_max_height: f32`
+
+-> Whether the widget is read-only. Setting this to `false` allows the user to enter new items.
+`read_only: bool`
+
+## Data
+
+The suggestions are represented as a struct:
+
+```bash
+pub struct SelectItems {
+    pub items: Vec<SelectItem>,
+    pub total: usize,
+}
+```
+
+with `SelectItem`:
+
+```bash
+pub struct SelectItem {
+    pub id: Option<String>,
+    pub label: String,
+}
+```
+
+`id` is expected to be set for existing suggestions and `None` for newly entered items.
+
+## Selected values
+
+Selected values can be retrieved with the `selected` parameters as a `Vec<SelectItem>`.
+
+```bash
+self.my_select.selected.iter().for_each(|item| {
+    ui.label(item.label.clone());
+});
+```
 
 ## Run examples
 
