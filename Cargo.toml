@@ -34,3 +34,7 @@ path = "examples/src/pictures.rs"
 [[example]]
 name = "remote"
 path = "examples/src/remote.rs"
+
+[[example]]
+name = "disabled"
+path = "examples/src/disabled.rs"

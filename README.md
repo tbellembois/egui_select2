@@ -1,4 +1,4 @@
-# A select2 like widget for egui
+# A select2 like widget for [egui](https://github.com/emilk/egui)
 
 Support local or remote data fetching.
 Possible custom rendering of the drop down items.
@@ -75,13 +75,22 @@ impl eframe::App for MyApp {
 `limit: usize`
 
 -> The minimum number of characters required to trigger a suggestion load.
-`min_input_length: usize`
+`minimum_input_length: usize`
 
 -> The scroll max height.
 `scroll_max_height: f32`
 
 -> Whether the widget is read-only. Setting this to `false` allows the user to enter new items.
 `read_only: bool`
+
+-> Whether to close the widget when a suggestion is selected.
+`close_on_select`
+
+-> Whether the widget is disabled.
+`disabled`
+
+-> Whether the widget allows multiple selections.
+`multiple`
 
 ## Data
 
@@ -118,5 +127,5 @@ self.my_select.selected.iter().for_each(|item| {
 ## Run examples
 
 ```bash
-cargo run --example basic|remote|pictures
+cargo run --example basic|remote|pictures|disabled
 ```

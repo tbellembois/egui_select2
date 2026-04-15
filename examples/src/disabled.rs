@@ -1,6 +1,4 @@
-use std::thread::sleep;
-
-use egui_select2::select2::{EguiSelect2, SelectItem, SelectItems};
+use egui_select2::select2::{EguiSelect2, SelectItem};
 
 struct MyApp {
     my_select: EguiSelect2,
@@ -9,39 +7,23 @@ struct MyApp {
 impl Default for MyApp {
     fn default() -> Self {
         let mut my_select = EguiSelect2::default();
-        my_select.read_only = false;
-        my_select.minimum_input_length = 1;
-        my_select.limit = 15;
-        my_select.close_on_select = false;
-        my_select.load_suggestions = Box::new(my_load_suggestions);
-
+        my_select.disabled = true;
+        my_select.selected = vec![
+            SelectItem {
+                id: Some("1".to_string()),
+                label: "one".to_string(),
+            },
+            SelectItem {
+                id: Some("2".to_string()),
+                label: "two".to_string(),
+            },
+            SelectItem {
+                id: Some("3".to_string()),
+                label: "three".to_string(),
+            },
+        ];
         Self { my_select }
     }
-}
-
-fn my_load_suggestions(limit: usize, offset: usize, query: &str) -> SelectItems {
-    sleep(std::time::Duration::from_secs(1));
-
-    let database: Vec<(String, String)> = (0..500)
-        .map(|i| (i.to_string(), format!("This is item {}", i)))
-        .collect();
-
-    let filtered = database
-        .into_iter()
-        .filter(|(_, label)| label.to_lowercase().contains(query));
-
-    let total = filtered.clone().count();
-
-    let items: Vec<SelectItem> = filtered
-        .skip(offset)
-        .take(limit)
-        .map(|(id, label)| SelectItem {
-            id: Some(id),
-            label,
-        })
-        .collect();
-
-    SelectItems { items, total }
 }
 
 impl eframe::App for MyApp {

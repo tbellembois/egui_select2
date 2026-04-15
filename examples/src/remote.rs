@@ -8,7 +8,7 @@ impl Default for MyApp {
     fn default() -> Self {
         let mut my_select = EguiSelect2::default();
         my_select.read_only = true;
-        my_select.min_input_length = 1;
+        my_select.minimum_input_length = 1;
         my_select.limit = 15;
         my_select.load_suggestions = Box::new(my_load_suggestions);
 

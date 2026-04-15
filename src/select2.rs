@@ -63,8 +63,14 @@ pub struct EguiSelect2 {
     pub limit: usize,
     /// The offset of the suggestions to load. Automatically managed by the widget.
     pub offset: usize,
+    /// Whether to close the widget when a suggestion is selected.
+    pub close_on_select: bool,
+    /// Whether the widget is disabled.
+    pub disabled: bool,
+    /// Whether the widget allows multiple selections.
+    pub multiple: bool,
     /// The minimum number of characters required to trigger a suggestion load.
-    pub min_input_length: usize,
+    pub minimum_input_length: usize,
     /// The input text.
     pub input: String,
     /// The selected items.
@@ -109,9 +115,12 @@ impl Default for EguiSelect2 {
             read_only: true,
             highlighted: None,
             open: false,
-            min_input_length: 0,
+            minimum_input_length: 0,
             last_edit_time: 0.0,
             autocomplete_triggered_for: String::default(),
+            close_on_select: true,
+            disabled: false,
+            multiple: false,
         }
     }
 }
@@ -130,7 +139,7 @@ impl EguiSelect2 {
             format_suggestion: Box::new(format_suggestion),
             limit,
             read_only,
-            min_input_length,
+            minimum_input_length: min_input_length,
             ..Default::default()
         }
     }
@@ -185,7 +194,7 @@ impl EguiSelect2 {
                     ui.group(|ui| {
                         ui.horizontal(|ui| {
                             ui.label(&item.label);
-                            if ui.button("✕").clicked() {
+                            if !self.disabled && ui.button("✕").clicked() {
                                 remove_idx = Some(i);
                             }
                         });
@@ -198,7 +207,12 @@ impl EguiSelect2 {
             });
 
             // --- Input ---
-            let input_resp = ui.text_edit_singleline(&mut self.input);
+            let input_widget = egui::TextEdit::singleline(&mut self.input);
+            let input_resp = if self.disabled {
+                ui.add_enabled(false, input_widget)
+            } else {
+                ui.add(input_widget)
+            };
 
             // Set last edit time on input change.
             if input_resp.changed() {
@@ -214,7 +228,8 @@ impl EguiSelect2 {
                 && self.input != self.autocomplete_triggered_for;
 
             // Trigger autocomplete after delay.
-            if should_autocomplete && !self.loading && self.min_input_length <= self.input.len() {
+            if should_autocomplete && !self.loading && self.minimum_input_length <= self.input.len()
+            {
                 self.autocomplete_triggered_for.clone_from(&self.input);
                 self.reset_pagination();
                 self.loading = true;
@@ -272,7 +287,6 @@ impl EguiSelect2 {
                                 for (i, item) in self.suggestions.items.iter().enumerate() {
                                     let selected = self.highlighted == Some(i);
 
-                                    // let resp = ui.selectable_label(selected, &item.label);
                                     let resp = (self.format_suggestion)(ui, selected, item);
 
                                     if resp.clicked() {
@@ -339,11 +353,18 @@ impl EguiSelect2 {
                 .iter()
                 .any(|x| x.id == item.id && x.label == item.label)
         {
-            self.selected.push(item);
+            if self.multiple {
+                self.selected.push(item);
+            } else {
+                self.selected.clear();
+                self.selected.push(item);
+            }
         }
 
         self.input.clear();
-        self.open = false;
+        if self.close_on_select {
+            self.open = false;
+        }
     }
 
     fn add_new(&mut self) {
