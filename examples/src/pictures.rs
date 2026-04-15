@@ -28,9 +28,12 @@ fn my_format_suggestion(ui: &mut Ui, selected: bool, select_item: &SelectItem) -
     let image =
         egui::Image::new(format!("file://{}", image_path.to_string_lossy())).corner_radius(5.0);
 
-    let image = image.fit_to_exact_size(Vec2::new(100.0, 100.0));
+    let image = image.fit_to_exact_size(Vec2::new(20.0, 20.0));
 
-    ui.add(egui::Button::new(image).selected(selected))
+    ui.add(egui::Button::image_and_text(
+        image,
+        select_item.label.clone(),
+    ))
 }
 
 fn my_load_suggestions(limit: usize, offset: usize, query: &str) -> SelectItems {

@@ -1,7 +1,11 @@
 # A select2 like widget for [egui](https://github.com/emilk/egui)
 
-Support local or remote data fetching.
-Possible custom rendering of the drop down items.
+-> Support local or remote data fetching.
+-> Possible custom rendering of the drop down items.
+-> Multiple or unique selection.
+-> Can be disabled.
+-> Add new entries (when `read_only` is false)
+-> Suggestions auto close on select or not.
 
 There is space for improvements. Pull requests are welcome.
 
