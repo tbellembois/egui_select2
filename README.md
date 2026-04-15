@@ -1,11 +1,11 @@
 # A select2 like widget for [egui](https://github.com/emilk/egui)
 
--> Support local or remote data fetching.
--> Possible custom rendering of the drop down items.
--> Multiple or unique selection.
--> Can be disabled.
--> Add new entries (when `read_only` is false)
--> Suggestions auto close on select or not.
+- Support local or remote data fetching.
+- Possible custom rendering of the drop down items.
+- Multiple or unique selection.
+- Can be disabled.
+- Add new entries (when `read_only` is false)
+- Suggestions auto close on select or not.
 
 There is space for improvements. Pull requests are welcome.
 
@@ -69,32 +69,23 @@ impl eframe::App for MyApp {
 
 ## Parameters
 
--> The function to load suggestions. REQUIRED
-`load_suggestions: Box<dyn Fn(usize, usize, &str) -> SelectItems>`
+- `load_suggestions: Box<dyn Fn(usize, usize, &str) -> SelectItems>` The function to load suggestions. REQUIRED
 
--> The function to format a suggestion in the dropdown.
-`format_suggestion: Box<dyn Fn(&mut Ui, bool, &SelectItem) -> Response>`
+- `format_suggestion: Box<dyn Fn(&mut Ui, bool, &SelectItem) -> Response>`The function to format a suggestion in the dropdown.
 
--> The maximum number of suggestions to load at once.
-`limit: usize`
+- `limit: usize` The maximum number of suggestions to load at once.
 
--> The minimum number of characters required to trigger a suggestion load.
-`minimum_input_length: usize`
+- `minimum_input_length: usize` The minimum number of characters required to trigger a suggestion load.
 
--> The scroll max height.
-`scroll_max_height: f32`
+- `scroll_max_height: f32` The scroll max height.
 
--> Whether the widget is read-only. Setting this to `false` allows the user to enter new items.
-`read_only: bool`
+- `read_only: bool` Whether the widget is read-only. Setting this to `false` allows the user to enter new items.
 
--> Whether to close the widget when a suggestion is selected.
-`close_on_select`
+- `close_on_select` Whether to close the widget when a suggestion is selected.
 
--> Whether the widget is disabled.
-`disabled`
+- `disabled` Whether the widget is disabled.
 
--> Whether the widget allows multiple selections.
-`multiple`
+- `multiple` Whether the widget allows multiple selections.
 
 ## Data
 
