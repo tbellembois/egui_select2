@@ -30,10 +30,7 @@ fn my_format_suggestion(ui: &mut Ui, selected: bool, select_item: &SelectItem) -
 
     let image = image.fit_to_exact_size(Vec2::new(20.0, 20.0));
 
-    ui.add(egui::Button::image_and_text(
-        image,
-        select_item.label.clone(),
-    ))
+    ui.add(egui::Button::image_and_text(image, select_item.label.clone()).selected(selected))
 }
 
 fn my_load_suggestions(limit: usize, offset: usize, query: &str) -> SelectItems {

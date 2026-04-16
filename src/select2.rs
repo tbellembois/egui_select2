@@ -100,27 +100,30 @@ impl Default for EguiSelect2 {
     /// You need to provide at least a `load_suggestions` function to load suggestions.
     fn default() -> Self {
         Self {
+            // Customizable parameters.
             load_suggestions: Box::new(|_, _, _| SelectItems::default()),
             format_suggestion: Box::new(|ui, selected, select_item| {
                 ui.add(egui::Button::new(&select_item.label).selected(selected))
             }),
+            close_on_select: true,
+            disabled: false,
+            minimum_input_length: 0,
+            multiple: false,
+            read_only: true,
+            scroll_max_height: 150.0,
+
+            // Internal attributes.
             limit: 10,
             offset: 0,
-            scroll_max_height: 150.0,
             input: String::default(),
             selected: Vec::new(),
             suggestions: SelectItems::default(),
             has_more: true,
             loading: false,
-            read_only: true,
             highlighted: None,
             open: false,
-            minimum_input_length: 0,
             last_edit_time: 0.0,
             autocomplete_triggered_for: String::default(),
-            close_on_select: true,
-            disabled: false,
-            multiple: false,
         }
     }
 }
@@ -128,18 +131,24 @@ impl Default for EguiSelect2 {
 impl EguiSelect2 {
     /// Creates a new `EguiSelect2` with the given parameters.
     pub fn new(
-        read_only: bool,
-        min_input_length: usize,
-        limit: usize,
         load_suggestions: impl Fn(usize, usize, &str) -> SelectItems + 'static,
         format_suggestion: impl Fn(&mut Ui, bool, &SelectItem) -> Response + 'static,
+        close_on_select: bool,
+        disabled: bool,
+        limit: usize,
+        minimum_input_length: usize,
+        multiple: bool,
+        read_only: bool,
     ) -> Self {
         EguiSelect2 {
             load_suggestions: Box::new(load_suggestions),
             format_suggestion: Box::new(format_suggestion),
             limit,
             read_only,
-            minimum_input_length: min_input_length,
+            minimum_input_length,
+            close_on_select,
+            disabled,
+            multiple,
             ..Default::default()
         }
     }
