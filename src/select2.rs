@@ -1,5 +1,7 @@
 use eframe::egui;
 use egui::{Response, Ui};
+use serde::{Deserialize, Serialize};
+use std::iter::FromIterator;
 
 // Widget translations.
 #[derive(Default, Clone)]
@@ -13,17 +15,30 @@ pub struct Translations {
 /// A select item.
 /// The `id` is used to identify the item, and the `label` is the text to display.
 /// The `id` is None for new items only (when `read_only` is false).
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct SelectItem {
     pub id: Option<String>,
     pub label: String,
 }
 
 /// A collection of select items retrieved by the `load_suggestions` function.
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct SelectItems {
     pub items: Vec<SelectItem>,
     pub total: usize,
+}
+
+impl FromIterator<SelectItem> for SelectItems {
+    fn from_iter<I: IntoIterator<Item = SelectItem>>(iter: I) -> Self {
+        let mut items = Vec::new();
+        for item in iter {
+            items.push(item);
+        }
+        SelectItems {
+            items: items.clone(),
+            total: items.len(),
+        }
+    }
 }
 
 const DEFAULT_SCROLL_MAX_HEIGHT: f32 = 150.0;

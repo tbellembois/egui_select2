@@ -16,13 +16,13 @@ rust-version = "1.94.1"
 eframe = "0.34.1"
 egui = "0.34.1"
 log = "0.4.29"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1.0.149"
 
 [dev-dependencies]
 egui_extras = { version = "0.34.1", features = ["all_loaders"] }
 image = { version = "0.25", features = ["png"] }
 ehttp = "0.7.1"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1.0.149"
 
 [[example]]
 name = "basic"
