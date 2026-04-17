@@ -1,6 +1,15 @@
 use eframe::egui;
 use egui::{Response, Ui};
 
+// Widget translations.
+#[derive(Default, Clone)]
+pub struct Translations {
+    pub loading: String,
+    pub no_results: String,
+    pub add: String,
+    pub clear_all: String,
+}
+
 /// A select item.
 /// The `id` is used to identify the item, and the `label` is the text to display.
 /// The `id` is None for new items only (when `read_only` is false).
@@ -19,6 +28,7 @@ pub struct SelectItems {
 
 const DEFAULT_SCROLL_MAX_HEIGHT: f32 = 150.0;
 const DEFAULT_MINIMUM_INPUT_LENGTH: usize = 1;
+const DEFAULT_MAXIMUM_SUGGESTIONS_NUMBER: usize = 10;
 
 /// A select2 like widget.
 /// Typical usage in egui:
@@ -59,11 +69,13 @@ const DEFAULT_MINIMUM_INPUT_LENGTH: usize = 1;
 /// ```
 pub struct EguiSelect2 {
     /// The function to load suggestions.
-    pub load_suggestions: Box<dyn Fn(usize, usize, &str) -> SelectItems>,
+    pub load_suggestions: Box<dyn Fn(usize, usize, &str) -> Result<SelectItems, String>>,
     /// The function to format a suggestion in the dropdown.
     pub format_suggestion: Box<dyn Fn(&mut Ui, bool, &SelectItem) -> Response>,
+    /// The translations for the widget.
+    pub translations: Translations,
     /// The maximum number of suggestions to load at once.
-    pub limit: usize,
+    pub maximum_suggestions_number: usize,
     /// The offset of the suggestions to load. Automatically managed by the widget.
     pub offset: usize,
     /// Whether to close the widget when a suggestion is selected.
@@ -104,19 +116,25 @@ impl Default for EguiSelect2 {
     fn default() -> Self {
         Self {
             // Customizable parameters.
-            load_suggestions: Box::new(|_, _, _| SelectItems::default()),
+            load_suggestions: Box::new(|_, _, _| Ok(SelectItems::default())),
             format_suggestion: Box::new(|ui, selected, select_item| {
                 ui.add(egui::Button::new(&select_item.label).selected(selected))
             }),
-            close_on_select: true,
-            disabled: false,
             minimum_input_length: DEFAULT_MINIMUM_INPUT_LENGTH,
+            maximum_suggestions_number: DEFAULT_MAXIMUM_SUGGESTIONS_NUMBER,
+            scroll_max_height: DEFAULT_SCROLL_MAX_HEIGHT,
             multiple: false,
             read_only: true,
-            scroll_max_height: DEFAULT_SCROLL_MAX_HEIGHT,
+            close_on_select: true,
+            disabled: false,
+            translations: Translations {
+                loading: "Loading...".to_string(),
+                no_results: "No results".to_string(),
+                add: "Add".to_string(),
+                clear_all: "Clear all".to_string(),
+            },
 
             // Internal attributes.
-            limit: 10,
             offset: 0,
             input: String::default(),
             selected: Vec::new(),
@@ -134,30 +152,37 @@ impl Default for EguiSelect2 {
 impl EguiSelect2 {
     /// Creates a new `EguiSelect2` with the given parameters.
     pub fn new(
-        load_suggestions: impl Fn(usize, usize, &str) -> SelectItems + 'static,
+        load_suggestions: impl Fn(usize, usize, &str) -> Result<SelectItems, String> + 'static,
         format_suggestion: impl Fn(&mut Ui, bool, &SelectItem) -> Response + 'static,
         close_on_select: bool,
         disabled: bool,
-        limit: usize,
+        maximum_suggestions_number: usize,
         minimum_input_length: usize,
         multiple: bool,
         read_only: bool,
+        translations: Translations,
     ) -> Self {
         EguiSelect2 {
             load_suggestions: Box::new(load_suggestions),
             format_suggestion: Box::new(format_suggestion),
-            limit,
+            maximum_suggestions_number,
             read_only,
             minimum_input_length,
             close_on_select,
             disabled,
             multiple,
+            translations,
             ..Default::default()
         }
     }
 
     #[must_use]
-    pub fn execute_load(&self, limit: usize, offset: usize, query: &str) -> SelectItems {
+    pub fn execute_load(
+        &self,
+        limit: usize,
+        offset: usize,
+        query: &str,
+    ) -> Result<SelectItems, String> {
         (self.load_suggestions)(limit, offset, query)
     }
 
@@ -167,7 +192,17 @@ impl EguiSelect2 {
     pub fn check_loading(&mut self) {
         if self.loading {
             // Trigger the load.
-            let suggestions = self.execute_load(self.limit, self.offset, &self.input);
+            let suggestions = match self.execute_load(
+                self.maximum_suggestions_number,
+                self.offset,
+                &self.input,
+            ) {
+                Ok(suggestions) => suggestions,
+                Err(e) => {
+                    log::error!("failed to load suggestions: {e}");
+                    SelectItems::default()
+                }
+            };
 
             // Append or replace the suggestions given the offset.
             if self.offset == 0 {
@@ -240,6 +275,7 @@ impl EguiSelect2 {
             self.offset = 0;
             // self.has_more = true;
             self.loading = true;
+            self.open = false;
         }
 
         // Open suggestions on focus.
@@ -273,18 +309,21 @@ impl EguiSelect2 {
         }
     }
 
+    // Render the dropdown of suggestions.
     fn render_dropdown(&mut self, ui: &mut egui::Ui) {
         if self.loading {
-            ui.label("Loading...");
+            ui.label(&self.translations.loading);
         }
 
         if self.open {
             egui::Frame::popup(ui.style()).show(ui, |ui| {
                 if self.suggestions.items.is_empty() {
                     if self.input.is_empty() || self.read_only {
-                        ui.label("No results");
+                        ui.label(&self.translations.no_results);
                     } else if !self.read_only
-                        && ui.button(format!("Add \"{}\"", self.input)).clicked()
+                        && ui
+                            .button(format!("{} \"{}\"", self.translations.add, self.input))
+                            .clicked()
                     {
                         self.add_new();
                     }

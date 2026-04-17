@@ -15,6 +15,7 @@ rust-version = "1.94.1"
 [dependencies]
 eframe = "0.34.1"
 egui = "0.34.1"
+log = "0.4.29"
 
 [dev-dependencies]
 egui_extras = { version = "0.34.1", features = ["all_loaders"] }

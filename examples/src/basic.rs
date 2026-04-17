@@ -11,7 +11,7 @@ impl Default for MyApp {
         let mut my_select = EguiSelect2::default();
         my_select.read_only = false;
         my_select.minimum_input_length = 1;
-        my_select.limit = 15;
+        my_select.maximum_suggestions_number = 15;
         my_select.close_on_select = false;
         my_select.load_suggestions = Box::new(my_load_suggestions);
 
@@ -19,7 +19,7 @@ impl Default for MyApp {
     }
 }
 
-fn my_load_suggestions(limit: usize, offset: usize, query: &str) -> SelectItems {
+fn my_load_suggestions(limit: usize, offset: usize, query: &str) -> Result<SelectItems, String> {
     sleep(std::time::Duration::from_secs(1));
 
     let database: Vec<(String, String)> = (0..500)
@@ -41,7 +41,7 @@ fn my_load_suggestions(limit: usize, offset: usize, query: &str) -> SelectItems 
         })
         .collect();
 
-    SelectItems { items, total }
+    Ok(SelectItems { items, total })
 }
 
 impl eframe::App for MyApp {

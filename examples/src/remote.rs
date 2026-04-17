@@ -9,14 +9,14 @@ impl Default for MyApp {
         let mut my_select = EguiSelect2::default();
         my_select.read_only = true;
         my_select.minimum_input_length = 1;
-        my_select.limit = 15;
+        my_select.maximum_suggestions_number = 15;
         my_select.load_suggestions = Box::new(my_load_suggestions);
 
         Self { my_select }
     }
 }
 
-fn my_load_suggestions(_limit: usize, _offset: usize, query: &str) -> SelectItems {
+fn my_load_suggestions(_limit: usize, _offset: usize, query: &str) -> Result<SelectItems, String> {
     let request = ehttp::Request::get(format!("https://swapi.dev/api/people/?search={}", query))
         .with_headers(ehttp::Headers::new(&[(
             "Content-Type",
@@ -49,7 +49,7 @@ fn my_load_suggestions(_limit: usize, _offset: usize, query: &str) -> SelectItem
         .collect();
     let total = sample_response.count;
 
-    SelectItems { items, total }
+    Ok(SelectItems { items, total })
 }
 
 impl eframe::App for MyApp {

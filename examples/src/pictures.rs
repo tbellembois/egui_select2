@@ -12,7 +12,7 @@ impl Default for MyApp {
         let mut my_select = EguiSelect2::default();
         my_select.read_only = true;
         my_select.minimum_input_length = 1;
-        my_select.limit = 10;
+        my_select.maximum_suggestions_number = 10;
         my_select.load_suggestions = Box::new(my_load_suggestions);
         my_select.format_suggestion = Box::new(my_format_suggestion);
         my_select.scroll_max_height = 400.0;
@@ -33,7 +33,7 @@ fn my_format_suggestion(ui: &mut Ui, selected: bool, select_item: &SelectItem) -
     ui.add(egui::Button::image_and_text(image, select_item.label.clone()).selected(selected))
 }
 
-fn my_load_suggestions(limit: usize, offset: usize, query: &str) -> SelectItems {
+fn my_load_suggestions(limit: usize, offset: usize, query: &str) -> Result<SelectItems, String> {
     sleep(std::time::Duration::from_secs(1));
 
     let database: Vec<(String, String)> = (1..9)
@@ -55,7 +55,7 @@ fn my_load_suggestions(limit: usize, offset: usize, query: &str) -> SelectItems 
         })
         .collect();
 
-    SelectItems { items, total }
+    Ok(SelectItems { items, total })
 }
 
 impl eframe::App for MyApp {

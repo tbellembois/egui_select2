@@ -73,7 +73,7 @@ impl eframe::App for MyApp {
 
 - `format_suggestion: Box<dyn Fn(&mut Ui, bool, &SelectItem) -> Response>` The function to format a suggestion in the dropdown.
 
-- `limit: usize` The maximum number of suggestions to load at once.
+- `maximum_suggestions_number: usize` The maximum number of suggestions to load at once.
 
 - `minimum_input_length: usize` The minimum number of characters required to trigger a suggestion load.
 
