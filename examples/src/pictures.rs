@@ -36,9 +36,7 @@ fn my_format_suggestion(ui: &mut Ui, selected: bool, select_item: &SelectItem) -
 fn my_load_suggestions(limit: usize, offset: usize, query: &str) -> Result<SelectItems, String> {
     sleep(std::time::Duration::from_secs(1));
 
-    let database: Vec<(String, String)> = (1..9)
-        .map(|i| (i.to_string(), format!("GHS0{}", i)))
-        .collect();
+    let database: Vec<(u64, String)> = (1..9).map(|i| (i, format!("GHS0{}", i))).collect();
 
     let filtered = database
         .into_iter()

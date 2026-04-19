@@ -22,8 +22,8 @@ impl Default for MyApp {
 fn my_load_suggestions(limit: usize, offset: usize, query: &str) -> Result<SelectItems, String> {
     sleep(std::time::Duration::from_secs(1));
 
-    let database: Vec<(String, String)> = (0..500)
-        .map(|i| (i.to_string(), format!("This is item {}", i)))
+    let database: Vec<(u64, String)> = (0..500)
+        .map(|i| (i, format!("This is item {}", i)))
         .collect();
 
     let filtered = database

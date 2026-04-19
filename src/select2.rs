@@ -17,7 +17,7 @@ pub struct Translations {
 /// The `id` is None for new items only (when `read_only` is false).
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct SelectItem {
-    pub id: Option<String>,
+    pub id: Option<u64>,
     pub label: String,
 }
 

@@ -10,15 +10,15 @@ impl Default for MyApp {
         my_select.disabled = true;
         my_select.selected = vec![
             SelectItem {
-                id: Some("1".to_string()),
+                id: Some(1),
                 label: "one".to_string(),
             },
             SelectItem {
-                id: Some("2".to_string()),
+                id: Some(2),
                 label: "two".to_string(),
             },
             SelectItem {
-                id: Some("3".to_string()),
+                id: Some(3),
                 label: "three".to_string(),
             },
         ];

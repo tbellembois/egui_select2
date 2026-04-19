@@ -43,7 +43,7 @@ fn my_load_suggestions(_limit: usize, _offset: usize, query: &str) -> Result<Sel
         .results
         .into_iter()
         .map(|p| SelectItem {
-            id: Some(p.name.clone()),
+            id: Some(1),
             label: format!("{} ({})", p.name, p.homeworld),
         })
         .collect();
