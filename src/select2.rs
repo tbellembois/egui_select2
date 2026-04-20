@@ -1,7 +1,10 @@
 use eframe::egui;
-use egui::{Response, Ui};
+use egui::Ui;
 use serde::{Deserialize, Serialize};
-use std::iter::FromIterator;
+use std::{
+    iter::FromIterator,
+    sync::{Arc, Mutex},
+};
 
 // Widget translations.
 #[derive(Default, Clone)]
@@ -45,6 +48,22 @@ const DEFAULT_SCROLL_MAX_HEIGHT: f32 = 150.0;
 const DEFAULT_MINIMUM_INPUT_LENGTH: usize = 1;
 const DEFAULT_MAXIMUM_SUGGESTIONS_NUMBER: usize = 10;
 
+pub type SharedSelect2Items = Arc<Mutex<Option<SelectItems>>>;
+pub type LoadSuggestionsFn = Box<dyn Fn(SharedSelect2Items, usize, usize, &str)>;
+pub type FormatSuggestionFn =
+    Box<dyn Fn(&mut Ui, bool, &SelectItem) -> egui::Response + Send + Sync>;
+
+/// The behavior of the select2 widget.
+pub struct WidgetBehavior {
+    close_on_select: bool,
+    disabled: bool,
+    maximum_suggestions_number: usize,
+    minimum_input_length: usize,
+    multiple: bool,
+    read_only: bool,
+    translations: Translations,
+}
+
 /// A select2 like widget.
 /// Typical usage in egui:
 /// ```
@@ -84,9 +103,9 @@ const DEFAULT_MAXIMUM_SUGGESTIONS_NUMBER: usize = 10;
 /// ```
 pub struct EguiSelect2 {
     /// The function to load suggestions.
-    pub load_suggestions: Box<dyn Fn(usize, usize, &str) -> Result<SelectItems, String>>,
+    pub load_suggestions: LoadSuggestionsFn,
     /// The function to format a suggestion in the dropdown.
-    pub format_suggestion: Box<dyn Fn(&mut Ui, bool, &SelectItem) -> Response>,
+    pub format_suggestion: FormatSuggestionFn,
     /// The translations for the widget.
     pub translations: Translations,
     /// The maximum number of suggestions to load at once.
@@ -106,7 +125,9 @@ pub struct EguiSelect2 {
     /// The selected items.
     pub selected: Vec<SelectItem>,
     /// The suggestions to display.
-    pub suggestions: SelectItems,
+    pub suggestions: SharedSelect2Items,
+    /// The new suggestions to display.
+    pub new_suggestions: SharedSelect2Items,
     /// The scroll max height.
     pub scroll_max_height: f32,
     /// Whether the widget has more suggestions to load.
@@ -131,7 +152,7 @@ impl Default for EguiSelect2 {
     fn default() -> Self {
         Self {
             // Customizable parameters.
-            load_suggestions: Box::new(|_, _, _| Ok(SelectItems::default())),
+            load_suggestions: Box::new(|_, _, _, _| ()),
             format_suggestion: Box::new(|ui, selected, select_item| {
                 ui.add(egui::Button::new(&select_item.label).selected(selected))
             }),
@@ -153,7 +174,8 @@ impl Default for EguiSelect2 {
             offset: 0,
             input: String::default(),
             selected: Vec::new(),
-            suggestions: SelectItems::default(),
+            suggestions: SharedSelect2Items::default(),
+            new_suggestions: SharedSelect2Items::default(),
             has_more: true,
             loading: false,
             highlighted: None,
@@ -166,39 +188,34 @@ impl Default for EguiSelect2 {
 
 impl EguiSelect2 {
     /// Creates a new `EguiSelect2` with the given parameters.
+    #[must_use]
     pub fn new(
-        load_suggestions: impl Fn(usize, usize, &str) -> Result<SelectItems, String> + 'static,
-        format_suggestion: impl Fn(&mut Ui, bool, &SelectItem) -> Response + 'static,
-        close_on_select: bool,
-        disabled: bool,
-        maximum_suggestions_number: usize,
-        minimum_input_length: usize,
-        multiple: bool,
-        read_only: bool,
-        translations: Translations,
+        load_suggestions: LoadSuggestionsFn,
+        format_suggestion: FormatSuggestionFn,
+        widget_behavior: WidgetBehavior,
     ) -> Self {
         EguiSelect2 {
             load_suggestions: Box::new(load_suggestions),
             format_suggestion: Box::new(format_suggestion),
-            maximum_suggestions_number,
-            read_only,
-            minimum_input_length,
-            close_on_select,
-            disabled,
-            multiple,
-            translations,
+            maximum_suggestions_number: widget_behavior.maximum_suggestions_number,
+            read_only: widget_behavior.read_only,
+            minimum_input_length: widget_behavior.minimum_input_length,
+            close_on_select: widget_behavior.close_on_select,
+            disabled: widget_behavior.disabled,
+            multiple: widget_behavior.multiple,
+            translations: widget_behavior.translations,
             ..Default::default()
         }
     }
 
-    #[must_use]
     pub fn execute_load(
         &self,
+        shared_select2_items: SharedSelect2Items,
         limit: usize,
         offset: usize,
         query: &str,
-    ) -> Result<SelectItems, String> {
-        (self.load_suggestions)(limit, offset, query)
+    ) {
+        (self.load_suggestions)(shared_select2_items, limit, offset, query);
     }
 
     /// Checks if the widget is loading suggestions and loads them if necessary.
@@ -206,32 +223,47 @@ impl EguiSelect2 {
     /// See examples for usage.
     pub fn check_loading(&mut self) {
         if self.loading {
+            let cloned_new_suggestions = Arc::clone(&self.new_suggestions);
+
             // Trigger the load.
-            let suggestions = match self.execute_load(
+            self.execute_load(
+                cloned_new_suggestions,
                 self.maximum_suggestions_number,
                 self.offset,
                 &self.input,
-            ) {
-                Ok(suggestions) => suggestions,
-                Err(e) => {
-                    log::error!("failed to load suggestions: {e}");
-                    SelectItems::default()
-                }
+            );
+
+            // Acquire the locks on (new) suggestions.
+            let Ok(mut locked_suggestions) = self.suggestions.lock() else {
+                log::error!("locked_suggestions lock error");
+                return;
+            };
+            let Ok(mut locked_new_suggestions) = self.new_suggestions.lock() else {
+                log::error!("locked_new_suggestions lock error");
+                return;
             };
 
-            // Append or replace the suggestions given the offset.
-            if self.offset == 0 {
-                self.suggestions = suggestions.clone();
-            } else {
-                self.suggestions.items.extend(suggestions.items);
+            // If there are new suggestions, append or replace them in the existing suggestions.
+            if let Some(new_suggestions) = locked_new_suggestions.as_ref() {
+                // If the offset is 0, replace the existing suggestions with the new ones.
+                if self.offset == 0 {
+                    *locked_suggestions = Some(new_suggestions.clone());
+                    self.offset = new_suggestions.items.len();
+                } else if let Some(suggestions) = locked_suggestions.as_mut() {
+                    suggestions.items.extend(new_suggestions.items.clone());
+                    self.offset = suggestions.items.len();
+                } else {
+                    *locked_suggestions = Some(new_suggestions.clone());
+                    self.offset = new_suggestions.items.len();
+                }
+
+                // Increase the offset for the next query and check if there are more suggestions to load.
+                self.has_more = self.offset < new_suggestions.total;
+
+                // Loading complete.
+                self.loading = false;
+                *locked_new_suggestions = None;
             }
-
-            // Increase the offset for the next query and check if there are more suggestions to load.
-            self.offset = self.suggestions.items.len();
-            self.has_more = self.offset < suggestions.total;
-
-            // Loading complete.
-            self.loading = false;
         }
     }
 
@@ -245,6 +277,7 @@ impl EguiSelect2 {
                 ui.group(|ui| {
                     ui.horizontal(|ui| {
                         ui.label(&item.label);
+
                         // Add a "✕" button to remove the item on when the widget is not disabled.
                         if !self.disabled && ui.button("✕").clicked() {
                             remove_idx = Some(i);
@@ -288,7 +321,6 @@ impl EguiSelect2 {
         if debounce_delay_passed && !self.loading && self.minimum_input_length <= self.input.len() {
             self.autocomplete_triggered_for.clone_from(&self.input);
             self.offset = 0;
-            // self.has_more = true;
             self.loading = true;
             self.open = false;
         }
@@ -312,7 +344,15 @@ impl EguiSelect2 {
                     self.move_up();
                 }
                 if i.key_pressed(egui::Key::Enter) {
-                    self.select_highlighted();
+                    let cloned_suggestions = Arc::clone(&self.suggestions);
+                    let Ok(locked_suggestions) = cloned_suggestions.lock() else {
+                        log::error!("locked_suggestions lock error");
+                        return;
+                    };
+
+                    if let Some(suggestions) = locked_suggestions.as_ref() {
+                        self.select_highlighted(suggestions);
+                    }
                 }
                 if i.key_pressed(egui::Key::Escape) {
                     self.open = false;
@@ -325,33 +365,27 @@ impl EguiSelect2 {
     }
 
     // Render the dropdown of suggestions.
-    fn render_dropdown(&mut self, ui: &mut egui::Ui) {
+    fn render_dropdown(&mut self, ui: &mut egui::Ui, suggestions: &SharedSelect2Items) {
         if self.loading {
             ui.label(&self.translations.loading);
         }
 
         if self.open {
             egui::Frame::popup(ui.style()).show(ui, |ui| {
-                if self.suggestions.items.is_empty() {
-                    if self.input.is_empty() || self.read_only {
-                        ui.label(&self.translations.no_results);
-                    } else if !self.read_only
-                        && ui
-                            .button(format!("{} \"{}\"", self.translations.add, self.input))
-                            .clicked()
-                    {
-                        self.add_new();
-                    }
-                } else {
+                let Ok(locked_suggestions) = suggestions.lock() else {
+                    log::error!("locked_suggestions lock error");
+                    return;
+                };
+
+                if let Some(suggestions) = locked_suggestions.as_ref() {
                     let mut clicked_index = None;
 
                     egui::ScrollArea::vertical()
                         .id_salt(ui.id().with("scroll"))
                         .max_height(self.scroll_max_height)
                         .show(ui, |ui| {
-                            for (i, item) in self.suggestions.items.iter().enumerate() {
+                            for (i, item) in suggestions.items.iter().enumerate() {
                                 let selected = self.highlighted == Some(i);
-
                                 let resp = (self.format_suggestion)(ui, selected, item);
 
                                 if resp.clicked() {
@@ -375,7 +409,18 @@ impl EguiSelect2 {
                         });
 
                     if let Some(i) = clicked_index {
-                        self.select_index(i);
+                        self.select_index(i, suggestions);
+                    }
+                } else {
+                    // There is no suggestions to display.
+                    if self.input.is_empty() || self.read_only {
+                        ui.label(&self.translations.no_results);
+                    } else if !self.read_only
+                        && ui
+                            .button(format!("{} \"{}\"", self.translations.add, self.input))
+                            .clicked()
+                    {
+                        self.add_new();
                     }
                 }
             });
@@ -384,10 +429,12 @@ impl EguiSelect2 {
 
     pub fn ui(&mut self, ui: &mut egui::Ui) -> egui::Response {
         let response = ui.vertical(|ui| {
+            let cloned_suggestions = Arc::clone(&self.suggestions);
+
             self.render_selected_items(ui);
             self.render_input(ui);
             self.render_keyboard_actions(ui);
-            self.render_dropdown(ui);
+            self.render_dropdown(ui, &cloned_suggestions);
         });
 
         response.response
@@ -395,13 +442,23 @@ impl EguiSelect2 {
 
     // Move the highlighted suggestion down.
     fn move_down(&mut self) {
+        let Ok(locked_suggestions) = self.suggestions.lock() else {
+            log::error!("locked_suggestions lock error");
+            return;
+        };
+
+        let suggestions_length = match *locked_suggestions {
+            Some(ref suggestions) => suggestions.items.len(),
+            None => 0,
+        };
+
         if let Some(i) = self.highlighted {
-            // An item is highlighted// An item is highlighted, so move the highlight down.
+            // An item is highlighted, so move the highlight down.
             // Increment the highlighted index if it's not at the end of the suggestions.
-            if i + 1 < self.suggestions.items.len() {
+            if i + 1 < suggestions_length {
                 self.highlighted = Some(i + 1);
             }
-        } else if !self.suggestions.items.is_empty() {
+        } else if suggestions_length > 0 {
             // No item is highlighted, so move to the first suggestion.
             self.highlighted = Some(0);
         }
@@ -418,18 +475,21 @@ impl EguiSelect2 {
     }
 
     // Select the highlighted suggestion.
-    fn select_highlighted(&mut self) {
+    fn select_highlighted(&mut self, suggestions: &SelectItems) {
         if let Some(i) = self.highlighted {
             // An item is highlighted, select it.
-            self.select_index(i);
+            self.select_index(i, suggestions);
         } else if !self.input.is_empty() {
             self.add_new();
         }
     }
 
     // Add select_item at index i to the selected items if not already selected.
-    fn select_index(&mut self, i: usize) {
-        if let Some(select_item) = self.suggestions.items.get(i).cloned()
+    fn select_index(&mut self, i: usize, suggestions: &SelectItems) {
+        // let locked_suggestions = self.suggestions.lock().unwrap();
+
+        // if let Some(suggestions) = locked_suggestions.as_ref() {
+        if let Some(select_item) = suggestions.items.get(i).cloned()
             && !self
                 .selected
                 .iter()
@@ -442,6 +502,7 @@ impl EguiSelect2 {
                 self.selected.push(select_item);
             }
         }
+        // }
 
         // Clear the input and close the suggestions if close_on_select is enabled.
         self.input.clear();

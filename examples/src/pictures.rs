@@ -1,7 +1,7 @@
 use std::thread::sleep;
 
 use egui::{Response, Ui, Vec2};
-use egui_select2::select2::{EguiSelect2, SelectItem, SelectItems};
+use egui_select2::select2::{EguiSelect2, SelectItem, SelectItems, SharedSelect2Items};
 
 struct MyApp {
     my_select: EguiSelect2,
@@ -11,6 +11,7 @@ impl Default for MyApp {
     fn default() -> Self {
         let mut my_select = EguiSelect2::default();
         my_select.read_only = true;
+        my_select.multiple = true;
         my_select.minimum_input_length = 1;
         my_select.maximum_suggestions_number = 10;
         my_select.load_suggestions = Box::new(my_load_suggestions);
@@ -33,7 +34,7 @@ fn my_format_suggestion(ui: &mut Ui, selected: bool, select_item: &SelectItem) -
     ui.add(egui::Button::image_and_text(image, select_item.label.clone()).selected(selected))
 }
 
-fn my_load_suggestions(limit: usize, offset: usize, query: &str) -> Result<SelectItems, String> {
+fn my_load_suggestions(suggestions: SharedSelect2Items, limit: usize, offset: usize, query: &str) {
     sleep(std::time::Duration::from_secs(1));
 
     let database: Vec<(u64, String)> = (1..9).map(|i| (i, format!("GHS0{}", i))).collect();
@@ -53,7 +54,8 @@ fn my_load_suggestions(limit: usize, offset: usize, query: &str) -> Result<Selec
         })
         .collect();
 
-    Ok(SelectItems { items, total })
+    let mut locked_suggestions = suggestions.lock().unwrap();
+    *locked_suggestions = Some(SelectItems { items, total });
 }
 
 impl eframe::App for MyApp {
@@ -62,15 +64,19 @@ impl eframe::App for MyApp {
             self.my_select.check_loading();
             self.my_select.ui(ui);
 
+            let locked_suggestions = self.my_select.suggestions.lock().unwrap();
+
+            if let Some(suggestions) = locked_suggestions.as_ref() {
+                ui.separator();
+                ui.label(format!("Loaded: {}", suggestions.items.len()));
+            } else {
+                ui.separator();
+                ui.label("Loaded: 0");
+            }
+
             ui.separator();
-            ui.label(format!(
-                "Loaded: {}",
-                self.my_select.suggestions.items.len()
-            ));
-            ui.separator();
-            ui.label("Selected:");
             self.my_select.selected.iter().for_each(|item| {
-                ui.label(format!("{:?} {}", item.id, item.label.clone()));
+                ui.label(format!("Selected: {:?} {}", item.id, item.label.clone()));
             });
         });
 

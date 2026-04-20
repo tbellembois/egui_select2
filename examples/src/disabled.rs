@@ -32,15 +32,19 @@ impl eframe::App for MyApp {
             self.my_select.check_loading();
             self.my_select.ui(ui);
 
+            let locked_suggestions = self.my_select.suggestions.lock().unwrap();
+
+            if let Some(suggestions) = locked_suggestions.as_ref() {
+                ui.separator();
+                ui.label(format!("Loaded: {}", suggestions.items.len()));
+            } else {
+                ui.separator();
+                ui.label("Loaded: 0");
+            }
+
             ui.separator();
-            ui.label(format!(
-                "Loaded: {}",
-                self.my_select.suggestions.items.len()
-            ));
-            ui.separator();
-            ui.label("Selected:");
             self.my_select.selected.iter().for_each(|item| {
-                ui.label(format!("{:?} {}", item.id, item.label.clone()));
+                ui.label(format!("Selected: {:?} {}", item.id, item.label.clone()));
             });
         });
 

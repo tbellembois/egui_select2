@@ -1,5 +1,6 @@
 # A select2 like widget for [egui](https://github.com/emilk/egui)
 
+- WASM compatible.
 - Support local or remote data fetching.
 - Possible custom rendering of the drop down items.
 - Multiple or unique selection.
