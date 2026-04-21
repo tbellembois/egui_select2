@@ -13,6 +13,7 @@ const DEFAULT_LOADING_TEXT: &str = "Loading";
 const DEFAULT_NO_RESULTS_TEXT: &str = "No results";
 const DEFAULT_ADD_TEXT: &str = "Add";
 const DEFAULT_CLEAR_ALL_TEXT: &str = "Clear all";
+const DEFAULT_HINT_TEXT: &str = "Type your search here, minimum characters: ";
 
 pub type SharedSelect2Items = Arc<Mutex<Option<SelectItems>>>;
 pub type LoadSuggestionsFn = Box<dyn Fn(SharedSelect2Items, usize, usize, &str)>;
@@ -310,7 +311,10 @@ impl EguiSelect2 {
 
     // Render the input text field.
     fn render_input(&mut self, ui: &mut egui::Ui) -> egui::Response {
-        let input_widget = egui::TextEdit::singleline(&mut self.input);
+        let input_widget = egui::TextEdit::singleline(&mut self.input).hint_text(format!(
+            "{} {}",
+            DEFAULT_HINT_TEXT, self.minimum_input_length
+        ));
 
         // Manage input widget state based on disabled state.
         let input_resp = if self.disabled {
