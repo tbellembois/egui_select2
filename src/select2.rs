@@ -6,6 +6,19 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+const DEFAULT_SCROLL_MAX_HEIGHT: f32 = 150.0;
+const DEFAULT_MINIMUM_INPUT_LENGTH: usize = 1;
+const DEFAULT_MAXIMUM_SUGGESTIONS_NUMBER: usize = 10;
+const DEFAULT_LOADING_TEXT: &str = "Loading";
+const DEFAULT_NO_RESULTS_TEXT: &str = "No results";
+const DEFAULT_ADD_TEXT: &str = "Add";
+const DEFAULT_CLEAR_ALL_TEXT: &str = "Clear all";
+
+pub type SharedSelect2Items = Arc<Mutex<Option<SelectItems>>>;
+pub type LoadSuggestionsFn = Box<dyn Fn(SharedSelect2Items, usize, usize, &str)>;
+pub type FormatSuggestionFn =
+    Box<dyn Fn(&mut Ui, bool, &SelectItem) -> egui::Response + Send + Sync>;
+
 // Widget translations.
 #[derive(Default, Clone)]
 pub struct Translations {
@@ -44,15 +57,6 @@ impl FromIterator<SelectItem> for SelectItems {
     }
 }
 
-const DEFAULT_SCROLL_MAX_HEIGHT: f32 = 150.0;
-const DEFAULT_MINIMUM_INPUT_LENGTH: usize = 1;
-const DEFAULT_MAXIMUM_SUGGESTIONS_NUMBER: usize = 10;
-
-pub type SharedSelect2Items = Arc<Mutex<Option<SelectItems>>>;
-pub type LoadSuggestionsFn = Box<dyn Fn(SharedSelect2Items, usize, usize, &str)>;
-pub type FormatSuggestionFn =
-    Box<dyn Fn(&mut Ui, bool, &SelectItem) -> egui::Response + Send + Sync>;
-
 /// The behavior of the select2 widget.
 pub struct WidgetBehavior {
     close_on_select: bool,
@@ -74,9 +78,14 @@ pub struct WidgetBehavior {
 /// }
 ///
 /// // Define your load_suggestions function.
-/// fn my_load_suggestions(limit: usize, offset: usize, query: &str) -> SelectItems {
-/// ...
-/// SelectItems { items, total }
+/// fn my_load_suggestions(suggestions: SharedSelect2Items, limit: usize, offset: usize, query: &str) {
+///     // Do not unwrap() in your code, handle the error instead.
+///     let mut locked_suggestions = suggestions.lock().unwrap();
+///
+///     // Perform your request (local or remote) using `offset`, `limit`, and `query`.
+///     // Turn the results into a `SelectItems` struct and assign it to `locked_suggestions`.
+///     ...
+///     *locked_suggestions = Some(SelectItems { items, total });
 /// }
 ///
 /// // Initialize your select with default values.
@@ -164,10 +173,10 @@ impl Default for EguiSelect2 {
             close_on_select: true,
             disabled: false,
             translations: Translations {
-                loading: "Loading...".to_string(),
-                no_results: "No results".to_string(),
-                add: "Add".to_string(),
-                clear_all: "Clear all".to_string(),
+                loading: DEFAULT_LOADING_TEXT.to_string(),
+                no_results: DEFAULT_NO_RESULTS_TEXT.to_string(),
+                add: DEFAULT_ADD_TEXT.to_string(),
+                clear_all: DEFAULT_CLEAR_ALL_TEXT.to_string(),
             },
 
             // Internal attributes.
@@ -234,13 +243,19 @@ impl EguiSelect2 {
             );
 
             // Acquire the locks on (new) suggestions.
-            let Ok(mut locked_suggestions) = self.suggestions.lock() else {
-                log::error!("locked_suggestions lock error");
-                return;
+            let mut locked_suggestions = match self.suggestions.lock() {
+                Ok(locked_suggestions) => locked_suggestions,
+                Err(e) => {
+                    log::error!("locked_suggestions lock error: {e}");
+                    return;
+                }
             };
-            let Ok(mut locked_new_suggestions) = self.new_suggestions.lock() else {
-                log::error!("locked_new_suggestions lock error");
-                return;
+            let mut locked_new_suggestions = match self.new_suggestions.lock() {
+                Ok(locked_new_suggestions) => locked_new_suggestions,
+                Err(e) => {
+                    log::error!("locked_new_suggestions lock error: {e}");
+                    return;
+                }
             };
 
             // If there are new suggestions, append or replace them in the existing suggestions.

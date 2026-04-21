@@ -34,9 +34,14 @@ struct MyApp {
 Define your load_suggestions function.
 
 ```
-fn my_load_suggestions(limit: usize, offset: usize, query: &str) -> SelectItems {
-...
-SelectItems { items, total }
+fn my_load_suggestions(suggestions: SharedSelect2Items, limit: usize, offset: usize, query: &str) {
+    // Do not unwrap() in your code, handle the error instead.
+    let mut locked_suggestions = suggestions.lock().unwrap();
+
+    // Perform your request (local or remote) using `offset`, `limit`, and `query`.
+    // Turn the results into a `SelectItems` struct and assign it to `locked_suggestions`.
+    ...
+    *locked_suggestions = Some(SelectItems { items, total });
 }
 ```
 
@@ -68,6 +73,32 @@ impl eframe::App for MyApp {
 }
 ```
 
+## Data
+
+The suggestions are represented as a shareable struct:
+
+```bash
+pub type SharedSelect2Items = Arc<Mutex<Option<SelectItems>>>;
+```
+
+```bash
+pub struct SelectItems {
+    pub items: Vec<SelectItem>,
+    pub total: usize,
+}
+```
+
+with `SelectItem`:
+
+```bash
+pub struct SelectItem {
+    pub id: Option<String>,
+    pub label: String,
+}
+```
+
+`id` is expected to be set for existing suggestions and `None` for newly entered items.
+
 ## Parameters
 
 - `load_suggestions: Box<dyn Fn(usize, usize, &str) -> SelectItems>` The function to load suggestions. REQUIRED
@@ -87,28 +118,6 @@ impl eframe::App for MyApp {
 - `disabled` Whether the widget is disabled.
 
 - `multiple` Whether the widget allows multiple selections.
-
-## Data
-
-The suggestions are represented as a struct:
-
-```bash
-pub struct SelectItems {
-    pub items: Vec<SelectItem>,
-    pub total: usize,
-}
-```
-
-with `SelectItem`:
-
-```bash
-pub struct SelectItem {
-    pub id: Option<String>,
-    pub label: String,
-}
-```
-
-`id` is expected to be set for existing suggestions and `None` for newly entered items.
 
 ## Selected values
 
