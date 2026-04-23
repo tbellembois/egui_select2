@@ -329,7 +329,7 @@ impl EguiSelect2 {
         }
 
         // Debounce delay (seconds).
-        let delay = 0.3;
+        let delay = 0.4;
 
         // Check if enough time passed since last edit.
         let now = ui.input(|i| i.time);
@@ -337,7 +337,16 @@ impl EguiSelect2 {
             (now - self.last_edit_time) > delay && self.input != self.autocomplete_triggered_for;
 
         // Trigger autocomplete after delay.
-        if debounce_delay_passed && !self.loading && self.minimum_input_length <= self.input.len() {
+        if debounce_delay_passed && !self.loading && (self.minimum_input_length <= self.input.len())
+        {
+            self.autocomplete_triggered_for.clone_from(&self.input);
+            self.offset = 0;
+            self.loading = true;
+            self.open = false;
+        }
+
+        // Trigger autocomplete on first click when input is empty.
+        if input_resp.clicked() && self.last_edit_time == 0.0 && self.input.is_empty() {
             self.autocomplete_triggered_for.clone_from(&self.input);
             self.offset = 0;
             self.loading = true;
