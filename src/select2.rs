@@ -13,7 +13,7 @@ const DEFAULT_LOADING_TEXT: &str = "Loading";
 const DEFAULT_NO_RESULTS_TEXT: &str = "No results";
 const DEFAULT_ADD_TEXT: &str = "Add";
 const DEFAULT_CLEAR_ALL_TEXT: &str = "Clear all";
-const DEFAULT_HINT_TEXT: &str = "Type your search here, minimum characters: ";
+const DEFAULT_HINT_TEXT: &str = "Search";
 
 pub type SharedSelect2Items = Arc<Mutex<Option<SelectItems>>>;
 pub type LoadSuggestionsFn = Box<dyn Fn(SharedSelect2Items, usize, usize, &str)>;
@@ -27,6 +27,7 @@ pub struct Translations {
     pub no_results: String,
     pub add: String,
     pub clear_all: String,
+    pub hint: String,
 }
 
 /// A select item.
@@ -154,12 +155,17 @@ pub struct EguiSelect2 {
     highlighted: Option<usize>,
     /// Whether the widget is open.
     open: bool,
+    /// The unique id of the widget.
+    id: String,
 }
 
 impl Default for EguiSelect2 {
     /// Creates a new `EguiSelect2` with default values.
     /// You need to provide at least a `load_suggestions` function to load suggestions.
     fn default() -> Self {
+        let rng: u64 = rand::random();
+        let rng_string = rng.to_string();
+
         Self {
             // Customizable parameters.
             load_suggestions: Box::new(|_, _, _, _| ()),
@@ -178,9 +184,11 @@ impl Default for EguiSelect2 {
                 no_results: DEFAULT_NO_RESULTS_TEXT.to_string(),
                 add: DEFAULT_ADD_TEXT.to_string(),
                 clear_all: DEFAULT_CLEAR_ALL_TEXT.to_string(),
+                hint: DEFAULT_HINT_TEXT.to_string(),
             },
 
             // Internal attributes.
+            id: rng_string,
             offset: 0,
             input: String::default(),
             selected: Vec::new(),
@@ -311,10 +319,8 @@ impl EguiSelect2 {
 
     // Render the input text field.
     fn render_input(&mut self, ui: &mut egui::Ui) -> egui::Response {
-        let input_widget = egui::TextEdit::singleline(&mut self.input).hint_text(format!(
-            "{} {}",
-            DEFAULT_HINT_TEXT, self.minimum_input_length
-        ));
+        let input_widget =
+            egui::TextEdit::singleline(&mut self.input).hint_text(&self.translations.hint);
 
         // Manage input widget state based on disabled state.
         let input_resp = if self.disabled {
@@ -409,7 +415,7 @@ impl EguiSelect2 {
                     let mut clicked_index = None;
 
                     egui::ScrollArea::vertical()
-                        .id_salt(ui.id().with("scroll"))
+                        .id_salt(ui.id().with(format!("scroll_{}", self.id)))
                         .max_height(self.scroll_max_height)
                         .show(ui, |ui| {
                             for (i, item) in suggestions.items.iter().enumerate() {
