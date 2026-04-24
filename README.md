@@ -1,6 +1,5 @@
 # A select2 like widget for [egui](https://github.com/emilk/egui)
 
-- WASM compatible.
 - Support local or remote data fetching.
 - Possible custom rendering of the drop down items.
 - Multiple or unique selection.
@@ -22,7 +21,7 @@ There is space for improvements. Pull requests are welcome.
 
 Typical usage in egui:
 
-Define your select in your app state.
+Define your select in your app.
 
 ```
 struct MyApp {

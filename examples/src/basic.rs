@@ -11,6 +11,7 @@ impl Default for MyApp {
         let mut my_select = EguiSelect2::default();
 
         my_select.read_only = false;
+        my_select.multiple = true;
         my_select.minimum_input_length = 1;
         my_select.maximum_suggestions_number = 15;
         my_select.close_on_select = false;
@@ -48,6 +49,10 @@ fn my_load_suggestions(suggestions: SharedSelect2Items, limit: usize, offset: us
 
 impl eframe::App for MyApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        egui::Window::new("Log").show(ui, |ui| {
+            egui_logger::logger_ui().show(ui);
+        });
+
         egui::CentralPanel::default().show_inside(ui, |ui| {
             self.my_select.check_loading();
             self.my_select.ui(ui);
@@ -75,6 +80,8 @@ impl eframe::App for MyApp {
 
 fn main() -> Result<(), eframe::Error> {
     let options = eframe::NativeOptions::default();
+
+    egui_logger::builder().init().unwrap();
 
     eframe::run_native(
         "Select2-like MultiSelect",

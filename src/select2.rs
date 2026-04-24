@@ -241,6 +241,8 @@ impl EguiSelect2 {
     /// See examples for usage.
     pub fn check_loading(&mut self) {
         if self.loading {
+            log::debug!("is loading");
+
             let cloned_new_suggestions = Arc::clone(&self.new_suggestions);
 
             // Trigger the load.
@@ -269,6 +271,8 @@ impl EguiSelect2 {
 
             // If there are new suggestions, append or replace them in the existing suggestions.
             if let Some(new_suggestions) = locked_new_suggestions.as_ref() {
+                log::debug!("loaded finished");
+
                 // If the offset is 0, replace the existing suggestions with the new ones.
                 if self.offset == 0 {
                     *locked_suggestions = Some(new_suggestions.clone());
@@ -345,18 +349,18 @@ impl EguiSelect2 {
         // Trigger autocomplete after delay.
         if debounce_delay_passed && !self.loading && (self.minimum_input_length <= self.input.len())
         {
+            self.close_suggestions();
             self.autocomplete_triggered_for.clone_from(&self.input);
             self.offset = 0;
             self.loading = true;
-            self.open = false;
         }
 
         // Trigger autocomplete on first click when input is empty.
         if input_resp.clicked() && self.last_edit_time == 0.0 && self.input.is_empty() {
+            self.close_suggestions();
             self.autocomplete_triggered_for.clone_from(&self.input);
             self.offset = 0;
             self.loading = true;
-            self.open = false;
         }
 
         // Open suggestions on focus.
@@ -389,7 +393,7 @@ impl EguiSelect2 {
                     }
                 }
                 if i.key_pressed(egui::Key::Escape) {
-                    self.open = false;
+                    self.close_suggestions();
                 }
                 if i.key_pressed(egui::Key::Backspace) && self.input.is_empty() {
                     self.selected.pop();
@@ -474,6 +478,15 @@ impl EguiSelect2 {
         response.response
     }
 
+    // Close the suggestions
+    fn close_suggestions(&mut self) {
+        let Ok(mut locked_suggestions) = self.suggestions.lock() else {
+            log::error!("locked_suggestions lock error");
+            return;
+        };
+        *locked_suggestions = None;
+    }
+
     // Move the highlighted suggestion down.
     fn move_down(&mut self) {
         let Ok(locked_suggestions) = self.suggestions.lock() else {
@@ -520,9 +533,6 @@ impl EguiSelect2 {
 
     // Add select_item at index i to the selected items if not already selected.
     fn select_index(&mut self, i: usize, suggestions: &SelectItems) {
-        // let locked_suggestions = self.suggestions.lock().unwrap();
-
-        // if let Some(suggestions) = locked_suggestions.as_ref() {
         if let Some(select_item) = suggestions.items.get(i).cloned()
             && !self
                 .selected
@@ -536,12 +546,11 @@ impl EguiSelect2 {
                 self.selected.push(select_item);
             }
         }
-        // }
 
         // Clear the input and close the suggestions if close_on_select is enabled.
         self.input.clear();
         if self.close_on_select {
-            self.open = false;
+            self.close_suggestions();
         }
     }
 
@@ -558,7 +567,7 @@ impl EguiSelect2 {
             }
 
             self.input.clear();
-            self.open = false;
+            self.close_suggestions();
         }
     }
 }
