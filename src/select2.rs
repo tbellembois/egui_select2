@@ -408,6 +408,8 @@ impl EguiSelect2 {
         }
 
         if self.open {
+            let mut is_clicked = false;
+
             egui::Frame::popup(ui.style()).show(ui, |ui| {
                 let Ok(locked_suggestions) = suggestions.lock() else {
                     log::error!("locked_suggestions lock error");
@@ -447,6 +449,7 @@ impl EguiSelect2 {
 
                     if let Some(i) = clicked_index {
                         self.select_index(i, suggestions);
+                        is_clicked = true;
                     }
                 } else {
                     // There is no suggestions to display.
@@ -461,6 +464,14 @@ impl EguiSelect2 {
                     }
                 }
             });
+
+            if is_clicked {
+                // Clear the input and close the suggestions if close_on_select is enabled.
+                self.input.clear();
+                if self.close_on_select {
+                    self.close_suggestions();
+                }
+            }
         }
     }
 
@@ -484,6 +495,7 @@ impl EguiSelect2 {
             return;
         };
         *locked_suggestions = None;
+        self.open = false;
     }
 
     // Move the highlighted suggestion down.
@@ -544,12 +556,6 @@ impl EguiSelect2 {
                 self.selected.clear();
                 self.selected.push(select_item);
             }
-        }
-
-        // Clear the input and close the suggestions if close_on_select is enabled.
-        self.input.clear();
-        if self.close_on_select {
-            self.close_suggestions();
         }
     }
 
