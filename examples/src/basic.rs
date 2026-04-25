@@ -1,4 +1,4 @@
-use std::thread::sleep;
+use std::{sync::Arc, thread::sleep};
 
 use egui_select2::select2::{EguiSelect2, SelectItem, SelectItems, SharedSelect2Items};
 
@@ -15,13 +15,18 @@ impl Default for MyApp {
         my_select.minimum_input_length = 1;
         my_select.maximum_suggestions_number = 15;
         my_select.close_on_select = false;
-        my_select.load_suggestions = Box::new(my_load_suggestions);
+        my_select.load_suggestions = Arc::new(my_load_suggestions);
 
         Self { my_select }
     }
 }
 
-fn my_load_suggestions(suggestions: SharedSelect2Items, limit: usize, offset: usize, query: &str) {
+fn my_load_suggestions(
+    suggestions: SharedSelect2Items,
+    limit: usize,
+    offset: usize,
+    query: String,
+) {
     sleep(std::time::Duration::from_secs(1));
 
     let database: Vec<(u64, String)> = (0..500)
@@ -30,7 +35,7 @@ fn my_load_suggestions(suggestions: SharedSelect2Items, limit: usize, offset: us
 
     let filtered = database
         .into_iter()
-        .filter(|(_, label)| label.to_lowercase().contains(query));
+        .filter(|(_, label)| label.to_lowercase().contains(query.as_str()));
 
     let total = filtered.clone().count();
 

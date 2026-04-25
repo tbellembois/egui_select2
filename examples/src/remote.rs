@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use egui_select2::select2::{EguiSelect2, SelectItem, SelectItems, SharedSelect2Items};
 
 struct MyApp {
@@ -10,7 +12,7 @@ impl Default for MyApp {
         my_select.read_only = true;
         my_select.minimum_input_length = 1;
         my_select.maximum_suggestions_number = 15;
-        my_select.load_suggestions = Box::new(my_load_suggestions);
+        my_select.load_suggestions = Arc::new(my_load_suggestions);
 
         Self { my_select }
     }
@@ -20,7 +22,7 @@ fn my_load_suggestions(
     suggestions: SharedSelect2Items,
     _limit: usize,
     _offset: usize,
-    query: &str,
+    query: String,
 ) {
     let request = ehttp::Request::get(format!("https://swapi.dev/api/people/?search={}", query))
         .with_headers(ehttp::Headers::new(&[(

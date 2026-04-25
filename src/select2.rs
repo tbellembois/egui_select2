@@ -16,7 +16,7 @@ const DEFAULT_CLEAR_ALL_TEXT: &str = "Clear all";
 const DEFAULT_HINT_TEXT: &str = "Search";
 
 pub type SharedSelect2Items = Arc<Mutex<Option<SelectItems>>>;
-pub type LoadSuggestionsFn = Box<dyn Fn(SharedSelect2Items, usize, usize, &str)>;
+pub type LoadSuggestionsFn = Arc<dyn Fn(SharedSelect2Items, usize, usize, String) + Send + Sync>;
 pub type FormatSuggestionFn =
     Box<dyn Fn(&mut Ui, bool, &SelectItem) -> egui::Response + Send + Sync>;
 
@@ -145,6 +145,8 @@ pub struct EguiSelect2 {
     pub has_more: bool,
     /// Whether the widget is loading suggestions.
     pub loading: bool,
+    /// A thread has been spawned to load suggestions.
+    pub load: bool,
     /// Whether the widget is read-only. Setting this to `false` allows the user to enter new items.
     pub read_only: bool,
     /// The last time the input was edited. Automatically managed by the widget to debounce input events.
@@ -168,7 +170,7 @@ impl Default for EguiSelect2 {
 
         Self {
             // Customizable parameters.
-            load_suggestions: Box::new(|_, _, _, _| ()),
+            load_suggestions: Arc::new(|_, _, _, _| ()),
             format_suggestion: Box::new(|ui, selected, select_item| {
                 ui.add(egui::Button::new(&select_item.label).selected(selected))
             }),
@@ -196,6 +198,7 @@ impl Default for EguiSelect2 {
             new_suggestions: SharedSelect2Items::default(),
             has_more: true,
             loading: false,
+            load: false,
             highlighted: None,
             open: false,
             last_edit_time: 0.0,
@@ -213,7 +216,7 @@ impl EguiSelect2 {
         widget_behavior: WidgetBehavior,
     ) -> Self {
         EguiSelect2 {
-            load_suggestions: Box::new(load_suggestions),
+            load_suggestions,
             format_suggestion: Box::new(format_suggestion),
             maximum_suggestions_number: widget_behavior.maximum_suggestions_number,
             read_only: widget_behavior.read_only,
@@ -226,33 +229,28 @@ impl EguiSelect2 {
         }
     }
 
-    pub fn execute_load(
-        &self,
-        shared_select2_items: SharedSelect2Items,
-        limit: usize,
-        offset: usize,
-        query: &str,
-    ) {
-        (self.load_suggestions)(shared_select2_items, limit, offset, query);
-    }
-
     /// Checks if the widget is loading suggestions and loads them if necessary.
     /// This method must be called outside the `ui` method of the widget.
     /// See examples for usage.
     pub fn check_loading(&mut self) {
-        if self.loading {
-            log::debug!("is loading");
-
+        if self.loading && !self.load {
+            let cloned_load_fn = Arc::clone(&self.load_suggestions);
             let cloned_new_suggestions = Arc::clone(&self.new_suggestions);
+            let limit = self.maximum_suggestions_number;
+            let offset = self.offset;
+            let query = self.input.clone();
+
+            log::debug!("spawning load_suggestions");
 
             // Trigger the load.
-            self.execute_load(
-                cloned_new_suggestions,
-                self.maximum_suggestions_number,
-                self.offset,
-                &self.input,
-            );
+            crate::spawn::spawn(move || {
+                (cloned_load_fn)(cloned_new_suggestions, limit, offset, query);
+            });
 
+            self.load = true;
+        }
+
+        if self.loading {
             // Acquire the locks on (new) suggestions.
             let mut locked_suggestions = match self.suggestions.lock() {
                 Ok(locked_suggestions) => locked_suggestions,
@@ -271,7 +269,7 @@ impl EguiSelect2 {
 
             // If there are new suggestions, append or replace them in the existing suggestions.
             if let Some(new_suggestions) = locked_new_suggestions.as_ref() {
-                log::debug!("loaded finished");
+                log::debug!("load_suggestions finished");
 
                 // If the offset is 0, replace the existing suggestions with the new ones.
                 if self.offset == 0 {
@@ -289,6 +287,7 @@ impl EguiSelect2 {
                 self.has_more = self.offset < new_suggestions.total;
 
                 // Loading complete.
+                self.load = false;
                 self.loading = false;
                 *locked_new_suggestions = None;
             }

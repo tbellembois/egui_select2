@@ -1,4 +1,4 @@
-use std::thread::sleep;
+use std::{sync::Arc, thread::sleep};
 
 use egui::{Response, Ui, Vec2};
 use egui_select2::select2::{EguiSelect2, SelectItem, SelectItems, SharedSelect2Items};
@@ -14,7 +14,7 @@ impl Default for MyApp {
         my_select.multiple = true;
         my_select.minimum_input_length = 1;
         my_select.maximum_suggestions_number = 10;
-        my_select.load_suggestions = Box::new(my_load_suggestions);
+        my_select.load_suggestions = Arc::new(my_load_suggestions);
         my_select.format_suggestion = Box::new(my_format_suggestion);
         my_select.scroll_max_height = 400.0;
 
@@ -34,14 +34,19 @@ fn my_format_suggestion(ui: &mut Ui, selected: bool, select_item: &SelectItem) -
     ui.add(egui::Button::image_and_text(image, select_item.label.clone()).selected(selected))
 }
 
-fn my_load_suggestions(suggestions: SharedSelect2Items, limit: usize, offset: usize, query: &str) {
+fn my_load_suggestions(
+    suggestions: SharedSelect2Items,
+    limit: usize,
+    offset: usize,
+    query: String,
+) {
     sleep(std::time::Duration::from_secs(1));
 
     let database: Vec<(u64, String)> = (1..9).map(|i| (i, format!("GHS0{}", i))).collect();
 
     let filtered = database
         .into_iter()
-        .filter(|(_, label)| label.to_lowercase().contains(query));
+        .filter(|(_, label)| label.to_lowercase().contains(query.as_str()));
 
     let total = filtered.clone().count();
 
