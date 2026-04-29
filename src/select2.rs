@@ -402,15 +402,21 @@ impl EguiSelect2 {
     }
 
     // Render the dropdown of suggestions.
-    fn render_dropdown(&mut self, ui: &mut egui::Ui, suggestions: &SharedSelect2Items) {
+    fn render_dropdown(
+        &mut self,
+        ui: &mut egui::Ui,
+        suggestions: &SharedSelect2Items,
+    ) -> Option<egui::Response> {
         if self.loading {
             ui.label(&self.translations.loading);
         }
 
+        let mut response: Option<egui::Response> = None;
+
         if self.open {
             let mut is_clicked = false;
 
-            egui::Frame::popup(ui.style()).show(ui, |ui| {
+            let popup_response = egui::Frame::popup(ui.style()).show(ui, |ui| {
                 let Ok(locked_suggestions) = suggestions.lock() else {
                     log::error!("locked_suggestions lock error");
                     return;
@@ -465,6 +471,8 @@ impl EguiSelect2 {
                 }
             });
 
+            response = Some(popup_response.response);
+
             if is_clicked {
                 // Clear the input and close the suggestions if close_on_select is enabled.
                 self.input.clear();
@@ -473,6 +481,8 @@ impl EguiSelect2 {
                 }
             }
         }
+
+        response
     }
 
     pub fn ui(&mut self, ui: &mut egui::Ui) -> egui::Response {
@@ -480,9 +490,26 @@ impl EguiSelect2 {
             let cloned_suggestions = Arc::clone(&self.suggestions);
 
             self.render_selected_items(ui);
-            self.render_input(ui);
+            let input_response = self.render_input(ui);
             self.render_keyboard_actions(ui);
-            self.render_dropdown(ui, &cloned_suggestions);
+            let dropdown_response = self.render_dropdown(ui, &cloned_suggestions);
+
+            if self.open {
+                // Calculate the combined rectangle of both areas.
+                let mut total_response = input_response;
+                if let Some(response) = dropdown_response {
+                    total_response = total_response.union(response);
+                }
+
+                // Check if the user clicked outside the combined area.
+                if ui
+                    .ctx()
+                    .input(|i| i.pointer.button_down(egui::PointerButton::Primary))
+                    && !total_response.contains_pointer()
+                {
+                    self.open = false;
+                }
+            }
         });
 
         response.response
