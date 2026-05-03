@@ -16,7 +16,7 @@ impl Default for MyApp {
         my_select.maximum_suggestions_number = 10;
         my_select.load_suggestions = Arc::new(my_load_suggestions);
         my_select.format_suggestion = Box::new(my_format_suggestion);
-        my_select.scroll_max_height = 400.0;
+        my_select.scroll_min_height = 400.0;
 
         Self { my_select }
     }

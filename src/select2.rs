@@ -6,7 +6,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-const DEFAULT_SCROLL_MAX_HEIGHT: f32 = 150.0;
+const DEFAULT_SCROLL_MIN_HEIGHT: f32 = 400.0;
 const DEFAULT_MINIMUM_INPUT_LENGTH: usize = 1;
 const DEFAULT_MAXIMUM_SUGGESTIONS_NUMBER: usize = 10;
 const DEFAULT_LOADING_TEXT: &str = "Loading";
@@ -139,8 +139,8 @@ pub struct EguiSelect2 {
     pub suggestions: SharedSelect2Items,
     /// The new suggestions to display.
     pub new_suggestions: SharedSelect2Items,
-    /// The scroll max height.
-    pub scroll_max_height: f32,
+    /// The scroll min height.
+    pub scroll_min_height: f32,
     /// Whether the widget has more suggestions to load.
     pub has_more: bool,
     /// Whether the widget is loading suggestions.
@@ -176,7 +176,7 @@ impl Default for EguiSelect2 {
             }),
             minimum_input_length: DEFAULT_MINIMUM_INPUT_LENGTH,
             maximum_suggestions_number: DEFAULT_MAXIMUM_SUGGESTIONS_NUMBER,
-            scroll_max_height: DEFAULT_SCROLL_MAX_HEIGHT,
+            scroll_min_height: DEFAULT_SCROLL_MIN_HEIGHT,
             multiple: false,
             read_only: true,
             close_on_select: true,
@@ -296,28 +296,30 @@ impl EguiSelect2 {
 
     // Render the selected items as clickable labels.
     fn render_selected_items(&mut self, ui: &mut egui::Ui) {
-        ui.horizontal_wrapped(|ui| {
-            // Index of the item to remove.
-            let mut remove_idx = None;
+        if !self.selected.is_empty() {
+            ui.horizontal_wrapped(|ui| {
+                // Index of the item to remove.
+                let mut remove_idx = None;
 
-            for (i, item) in self.selected.iter().enumerate() {
-                ui.group(|ui| {
-                    ui.horizontal(|ui| {
-                        ui.label(&item.label);
+                for (i, item) in self.selected.iter().enumerate() {
+                    ui.group(|ui| {
+                        ui.horizontal(|ui| {
+                            ui.label(&item.label);
 
-                        // Add a "✕" button to remove the item on when the widget is not disabled.
-                        if !self.disabled && ui.button("✕").clicked() {
-                            remove_idx = Some(i);
-                        }
+                            // Add a "✕" button to remove the item on when the widget is not disabled.
+                            if !self.disabled && ui.button("✕").clicked() {
+                                remove_idx = Some(i);
+                            }
+                        });
                     });
-                });
-            }
+                }
 
-            // Remove the selected item if the user clicks the "✕" button.
-            if let Some(i) = remove_idx {
-                self.selected.remove(i);
-            }
-        });
+                // Remove the selected item if the user clicks the "✕" button.
+                if let Some(i) = remove_idx {
+                    self.selected.remove(i);
+                }
+            });
+        }
     }
 
     // Render the input text field.
@@ -426,8 +428,9 @@ impl EguiSelect2 {
                     let mut clicked_index = None;
 
                     egui::ScrollArea::vertical()
+                        .min_scrolled_height(self.scroll_min_height)
                         .id_salt(ui.id().with(format!("scroll_{}", self.id)))
-                        .max_height(self.scroll_max_height)
+                        .max_height(self.scroll_min_height)
                         .show(ui, |ui| {
                             for (i, item) in suggestions.items.iter().enumerate() {
                                 let selected = self.highlighted == Some(i);
