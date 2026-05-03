@@ -424,7 +424,9 @@ impl EguiSelect2 {
                     return;
                 };
 
-                if let Some(suggestions) = locked_suggestions.as_ref() {
+                if let Some(suggestions) = locked_suggestions.as_ref()
+                    && suggestions.total > 0
+                {
                     let mut clicked_index = None;
 
                     egui::ScrollArea::vertical()
