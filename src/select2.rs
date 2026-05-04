@@ -307,7 +307,7 @@ impl EguiSelect2 {
                             ui.label(&item.label);
 
                             // Add a "✕" button to remove the item on when the widget is not disabled.
-                            if !self.disabled && ui.button("✕").clicked() {
+                            if !self.disabled && ui.button("x").clicked() {
                                 remove_idx = Some(i);
                             }
                         });
