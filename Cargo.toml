@@ -13,8 +13,8 @@ keywords = ["egui","select2", "widget"]
 rust-version = "1.94.1"
 
 [dependencies]
-eframe = "0.34.1"
-egui = "0.34.1"
+eframe = "0.34.2"
+egui = "0.34.2"
 log = "0.4.29"
 rand = { version = "0.7", features = ["wasm-bindgen"] }
 serde = { version = "1", features = ["derive"] }
