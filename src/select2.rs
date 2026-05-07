@@ -1,5 +1,5 @@
 use eframe::egui;
-use egui::Ui;
+use egui::{Pos2, Rect, Ui};
 use serde::{Deserialize, Serialize};
 use std::{
     iter::FromIterator,
@@ -159,6 +159,8 @@ pub struct EguiSelect2 {
     open: bool,
     /// The unique id of the widget.
     id: String,
+    /// The rectangle of the input field.
+    input_rect: egui::Rect,
 }
 
 impl Default for EguiSelect2 {
@@ -191,6 +193,10 @@ impl Default for EguiSelect2 {
 
             // Internal attributes.
             id: rng_string,
+            input_rect: Rect {
+                min: Pos2 { x: 0.0, y: 0.0 },
+                max: Pos2 { x: 0.0, y: 0.0 },
+            },
             offset: 0,
             input: String::default(),
             selected: Vec::new(),
@@ -227,6 +233,11 @@ impl EguiSelect2 {
             translations: widget_behavior.translations,
             ..Default::default()
         }
+    }
+
+    /// Clear the selected items.
+    pub fn clear_selected_items(&mut self) {
+        self.selected.clear();
     }
 
     /// Checks if the widget is loading suggestions and loads them if necessary.
@@ -304,7 +315,9 @@ impl EguiSelect2 {
                 for (i, item) in self.selected.iter().enumerate() {
                     ui.group(|ui| {
                         ui.horizontal(|ui| {
-                            ui.label(&item.label);
+                            ui.set_max_width(self.input_rect.width()); // Button width and margins will be added.
+
+                            ui.add(egui::Label::new(&item.label).truncate());
 
                             // Add a "✕" button to remove the item on when the widget is not disabled.
                             if !self.disabled && ui.button("x").clicked() {
@@ -319,6 +332,10 @@ impl EguiSelect2 {
                     self.selected.remove(i);
                 }
             });
+
+            if ui.button(&self.translations.clear_all).clicked() {
+                self.clear_selected_items();
+            }
         }
     }
 
@@ -498,6 +515,8 @@ impl EguiSelect2 {
             let input_response = self.render_input(ui);
             self.render_keyboard_actions(ui);
             let dropdown_response = self.render_dropdown(ui, &cloned_suggestions);
+
+            self.input_rect = input_response.rect;
 
             if self.open {
                 // Calculate the combined rectangle of both areas.

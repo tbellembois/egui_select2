@@ -48,3 +48,7 @@ path = "examples/src/disabled.rs"
 [[example]]
 name = "several"
 path = "examples/src/several.rs"
+
+[[example]]
+name = "long"
+path = "examples/src/long.rs"
