@@ -333,7 +333,7 @@ impl EguiSelect2 {
                 }
             });
 
-            if ui.button(&self.translations.clear_all).clicked() {
+            if self.multiple && ui.button(&self.translations.clear_all).clicked() {
                 self.clear_selected_items();
             }
         }
