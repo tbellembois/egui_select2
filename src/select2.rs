@@ -121,8 +121,6 @@ pub struct EguiSelect2 {
     pub translations: Translations,
     /// The maximum number of suggestions to load at once.
     pub maximum_suggestions_number: usize,
-    /// The offset of the suggestions to load. Automatically managed by the widget.
-    pub offset: usize,
     /// Whether to close the widget when a suggestion is selected.
     pub close_on_select: bool,
     /// Whether the widget is disabled.
@@ -131,24 +129,26 @@ pub struct EguiSelect2 {
     pub multiple: bool,
     /// The minimum number of characters required to trigger a suggestion load.
     pub minimum_input_length: usize,
-    /// The input text.
-    pub input: String,
     /// The selected items.
     pub selected: Vec<SelectItem>,
-    /// The suggestions to display.
-    pub suggestions: SharedSelect2Items,
-    /// The new suggestions to display.
-    pub new_suggestions: SharedSelect2Items,
     /// The scroll min height.
     pub scroll_min_height: f32,
-    /// Whether the widget has more suggestions to load.
-    pub has_more: bool,
-    /// Whether the widget is loading suggestions.
-    pub loading: bool,
-    /// A thread has been spawned to load suggestions.
-    pub load: bool,
     /// Whether the widget is read-only. Setting this to `false` allows the user to enter new items.
     pub read_only: bool,
+    /// The suggestions to display.
+    pub suggestions: SharedSelect2Items,
+    /// The input text.
+    input: String,
+    /// The new suggestions to display.
+    new_suggestions: SharedSelect2Items,
+    /// The offset of the suggestions to load. Automatically managed by the widget.
+    offset: usize,
+    /// Whether the widget has more suggestions to load.
+    has_more: bool,
+    /// Whether the widget is loading suggestions.
+    loading: bool,
+    /// A thread has been spawned to load suggestions.
+    load: bool,
     /// The last time the input was edited. Automatically managed by the widget to debounce input events.
     last_edit_time: f64,
     /// The last input text that triggered a suggestion load. Automatically managed by the widget to debounce input events.
@@ -312,19 +312,15 @@ impl EguiSelect2 {
                 // Index of the item to remove.
                 let mut remove_idx = None;
 
+                ui.set_max_width(200.0);
+
                 for (i, item) in self.selected.iter().enumerate() {
-                    ui.group(|ui| {
-                        ui.horizontal(|ui| {
-                            ui.set_max_width(self.input_rect.width()); // Button width and margins will be added.
+                    ui.spacing_mut().item_spacing.x = 6.0;
+                    ui.spacing_mut().item_spacing.y = 6.0;
 
-                            ui.add(egui::Label::new(&item.label).truncate());
-
-                            // Add a "✕" button to remove the item on when the widget is not disabled.
-                            if !self.disabled && ui.button("x").clicked() {
-                                remove_idx = Some(i);
-                            }
-                        });
-                    });
+                    if ui.button(&item.label).clicked() {
+                        remove_idx = Some(i);
+                    }
                 }
 
                 // Remove the selected item if the user clicks the "✕" button.
@@ -333,7 +329,7 @@ impl EguiSelect2 {
                 }
             });
 
-            if self.multiple && ui.button(&self.translations.clear_all).clicked() {
+            if self.multiple && ui.link(&self.translations.clear_all).clicked() {
                 self.clear_selected_items();
             }
         }

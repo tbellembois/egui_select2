@@ -98,6 +98,18 @@ pub struct SelectItem {
 
 `id` is expected to be set for existing suggestions and `None` for newly entered items.
 
+The strings can be translated using the `translations` parameter.
+
+```bash
+pub struct Translations {
+    pub loading: String,
+    pub no_results: String,
+    pub add: String,
+    pub clear_all: String,
+    pub hint: String,
+}
+```
+
 ## Parameters
 
 - `load_suggestions: Box<dyn Fn(usize, usize, &str) -> SelectItems>` The function to load suggestions. REQUIRED
@@ -108,7 +120,7 @@ pub struct SelectItem {
 
 - `minimum_input_length: usize` The minimum number of characters required to trigger a suggestion load.
 
-- `scroll_max_height: f32` The scroll max height.
+- `scroll_min_height: f32` The scroll min height.
 
 - `read_only: bool` Whether the widget is read-only. Setting this to `false` allows the user to enter new items.
 
@@ -118,9 +130,11 @@ pub struct SelectItem {
 
 - `multiple` Whether the widget allows multiple selections.
 
+- `translations` The translations to use for the widget.
+
 ## Selected values
 
-Selected values can be retrieved with the `selected` parameters as a `Vec<SelectItem>`.
+Selected values can be retrieved with the `selected` attribute as a `Vec<SelectItem>`.
 
 ```bash
 self.my_select.selected.iter().for_each(|item| {
