@@ -13,6 +13,7 @@ const DEFAULT_LOADING_TEXT: &str = "Loading";
 const DEFAULT_NO_RESULTS_TEXT: &str = "No results";
 const DEFAULT_ADD_TEXT: &str = "Add";
 const DEFAULT_CLEAR_ALL_TEXT: &str = "Clear all";
+const DEFAULT_LOAD_MORE_TEXT: &str = "Load more results";
 const DEFAULT_HINT_TEXT: &str = "Search";
 
 pub type SharedSelect2Items = Arc<Mutex<Option<SelectItems>>>;
@@ -27,6 +28,7 @@ pub struct Translations {
     pub no_results: String,
     pub add: String,
     pub clear_all: String,
+    pub load_more: String,
     pub hint: String,
 }
 
@@ -188,6 +190,7 @@ impl Default for EguiSelect2 {
                 no_results: DEFAULT_NO_RESULTS_TEXT.to_string(),
                 add: DEFAULT_ADD_TEXT.to_string(),
                 clear_all: DEFAULT_CLEAR_ALL_TEXT.to_string(),
+                load_more: DEFAULT_LOAD_MORE_TEXT.to_string(),
                 hint: DEFAULT_HINT_TEXT.to_string(),
             },
 
@@ -466,7 +469,10 @@ impl EguiSelect2 {
                             }
 
                             // Request the next page of suggestions.
-                            if self.has_more && !self.loading && ui.small_button("+").clicked() {
+                            if self.has_more
+                                && !self.loading
+                                && ui.link(&self.translations.load_more).clicked()
+                            {
                                 self.loading = true;
                             }
                         });
