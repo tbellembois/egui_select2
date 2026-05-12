@@ -327,11 +327,11 @@ impl EguiSelect2 {
                 if let Some(i) = remove_idx {
                     self.selected.remove(i);
                 }
-            });
 
-            if self.multiple && ui.link(&self.translations.clear_all).clicked() {
-                self.clear_selected_items();
-            }
+                if self.multiple && ui.link(&self.translations.clear_all).clicked() {
+                    self.clear_selected_items();
+                }
+            });
         }
     }
 
