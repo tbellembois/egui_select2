@@ -474,6 +474,8 @@ impl EguiSelect2 {
                                     .id_salt(ui.id().with(format!("scroll_{}", self.id)))
                                     .max_height(self.scroll_min_height)
                                     .show(ui, |ui| {
+                                        ui.set_width(self.input_rect.width());
+
                                         for (i, item) in suggestions.items.iter().enumerate() {
                                             let selected = self.highlighted == Some(i);
                                             let resp = (self.format_suggestion)(ui, selected, item);
@@ -492,13 +494,22 @@ impl EguiSelect2 {
                                             }
                                         }
 
+                                        ui.add_space(10.0);
+
                                         // Request the next page of suggestions.
-                                        if self.has_more
-                                            && !self.request_loading
-                                            && ui.link(&self.translations.load_more).clicked()
-                                        {
-                                            self.request_loading = true;
-                                        }
+                                        ui.with_layout(
+                                            egui::Layout::top_down_justified(egui::Align::Center),
+                                            |ui| {
+                                                if self.has_more
+                                                    && !self.request_loading
+                                                    && ui
+                                                        .link(&self.translations.load_more)
+                                                        .clicked()
+                                                {
+                                                    self.request_loading = true;
+                                                }
+                                            },
+                                        );
                                     });
 
                                 if let Some(i) = clicked_index {
