@@ -226,7 +226,7 @@ impl EguiSelect2 {
     ) -> Self {
         EguiSelect2 {
             load_suggestions,
-            format_suggestion: Box::new(format_suggestion),
+            format_suggestion,
             maximum_suggestions_number: widget_behavior.maximum_suggestions_number,
             read_only: widget_behavior.read_only,
             minimum_input_length: widget_behavior.minimum_input_length,
@@ -290,7 +290,12 @@ impl EguiSelect2 {
                     *locked_suggestions = Some(new_suggestions.clone());
                     self.offset = new_suggestions.items.len();
                 } else if let Some(suggestions) = locked_suggestions.as_mut() {
-                    suggestions.items.extend(new_suggestions.items.clone());
+                    // Deduplication.
+                    for item in &new_suggestions.items {
+                        if !suggestions.items.iter().any(|x| x.id == item.id) {
+                            suggestions.items.push(item.clone());
+                        }
+                    }
                     self.offset = suggestions.items.len();
                 } else {
                     *locked_suggestions = Some(new_suggestions.clone());
@@ -425,6 +430,10 @@ impl EguiSelect2 {
         ui: &mut egui::Ui,
         suggestions: &SharedSelect2Items,
     ) -> Option<egui::Response> {
+        let widgets = &ui.visuals().widgets;
+        let bg_stroke = widgets.noninteractive.bg_stroke;
+        let bg_fill = widgets.inactive.bg_fill;
+
         if self.loading {
             ui.label(&self.translations.loading);
         }
@@ -434,66 +443,79 @@ impl EguiSelect2 {
         if self.open {
             let mut is_clicked = false;
 
-            let popup_response = egui::Frame::popup(ui.style()).show(ui, |ui| {
-                let Ok(locked_suggestions) = suggestions.lock() else {
-                    log::error!("locked_suggestions lock error");
-                    return;
-                };
-
-                if let Some(suggestions) = locked_suggestions.as_ref()
-                    && suggestions.total > 0
-                {
-                    let mut clicked_index = None;
-
-                    egui::ScrollArea::vertical()
-                        .min_scrolled_height(self.scroll_min_height)
-                        .id_salt(ui.id().with(format!("scroll_{}", self.id)))
-                        .max_height(self.scroll_min_height)
+            let popup_response = egui::Area::new(egui::Id::new(format!("popup_area_{}", self.id)))
+                .fixed_pos(self.input_rect.left_top() + egui::vec2(0.0, self.input_rect.height()))
+                .default_width(self.input_rect.width())
+                .show(ui, |ui| {
+                    egui::Frame::new()
+                        .fill(bg_fill)
+                        .stroke(egui::Stroke::new(1.0, bg_stroke.color))
                         .show(ui, |ui| {
-                            for (i, item) in suggestions.items.iter().enumerate() {
-                                let selected = self.highlighted == Some(i);
-                                let resp = (self.format_suggestion)(ui, selected, item);
+                            ui.set_width(self.input_rect.width());
 
-                                if resp.clicked() {
-                                    clicked_index = Some(i);
-                                }
+                            let Ok(locked_suggestions) = suggestions.lock() else {
+                                log::error!("locked_suggestions lock error");
+                                return;
+                            };
 
-                                if selected
-                                    && ui.input(|i| {
-                                        i.key_pressed(egui::Key::ArrowDown)
-                                            || i.key_pressed(egui::Key::ArrowUp)
-                                    })
-                                {
-                                    resp.scroll_to_me(Some(egui::Align::Center));
-                                }
-                            }
-
-                            // Request the next page of suggestions.
-                            if self.has_more
-                                && !self.loading
-                                && ui.link(&self.translations.load_more).clicked()
+                            if let Some(suggestions) = locked_suggestions.as_ref()
+                                && suggestions.total > 0
                             {
-                                self.loading = true;
+                                let mut clicked_index = None;
+
+                                egui::ScrollArea::vertical()
+                                    .min_scrolled_height(self.scroll_min_height)
+                                    .id_salt(ui.id().with(format!("scroll_{}", self.id)))
+                                    .max_height(self.scroll_min_height)
+                                    .show(ui, |ui| {
+                                        for (i, item) in suggestions.items.iter().enumerate() {
+                                            let selected = self.highlighted == Some(i);
+                                            let resp = (self.format_suggestion)(ui, selected, item);
+
+                                            if resp.clicked() {
+                                                clicked_index = Some(i);
+                                            }
+
+                                            if selected
+                                                && ui.input(|i| {
+                                                    i.key_pressed(egui::Key::ArrowDown)
+                                                        || i.key_pressed(egui::Key::ArrowUp)
+                                                })
+                                            {
+                                                resp.scroll_to_me(Some(egui::Align::Center));
+                                            }
+                                        }
+
+                                        // Request the next page of suggestions.
+                                        if self.has_more
+                                            && !self.loading
+                                            && ui.link(&self.translations.load_more).clicked()
+                                        {
+                                            self.loading = true;
+                                        }
+                                    });
+
+                                if let Some(i) = clicked_index {
+                                    self.select_index(i, suggestions);
+                                    is_clicked = true;
+                                }
+                            } else {
+                                // There is no suggestions to display.
+                                if self.input.is_empty() || self.read_only {
+                                    ui.label(&self.translations.no_results);
+                                } else if !self.read_only
+                                    && ui
+                                        .button(format!(
+                                            "{} \"{}\"",
+                                            self.translations.add, self.input
+                                        ))
+                                        .clicked()
+                                {
+                                    self.add_new();
+                                }
                             }
                         });
-
-                    if let Some(i) = clicked_index {
-                        self.select_index(i, suggestions);
-                        is_clicked = true;
-                    }
-                } else {
-                    // There is no suggestions to display.
-                    if self.input.is_empty() || self.read_only {
-                        ui.label(&self.translations.no_results);
-                    } else if !self.read_only
-                        && ui
-                            .button(format!("{} \"{}\"", self.translations.add, self.input))
-                            .clicked()
-                    {
-                        self.add_new();
-                    }
-                }
-            });
+                });
 
             response = Some(popup_response.response);
 
@@ -516,22 +538,24 @@ impl EguiSelect2 {
             self.render_selected_items(ui);
             let input_response = self.render_input(ui);
             self.render_keyboard_actions(ui);
-            let dropdown_response = self.render_dropdown(ui, &cloned_suggestions);
+            let maybe_dropdown_response = self.render_dropdown(ui, &cloned_suggestions);
 
             self.input_rect = input_response.rect;
 
             if self.open {
-                // Calculate the combined rectangle of both areas.
-                let mut total_response = input_response;
-                if let Some(response) = dropdown_response {
-                    total_response = total_response.union(response);
-                }
-
-                // Check if the user clicked outside the combined area.
-                if ui
+                if let Some(dropdown_response) = maybe_dropdown_response {
+                    if ui
+                        .ctx()
+                        .input(|i| i.pointer.button_down(egui::PointerButton::Primary))
+                        && !input_response.contains_pointer()
+                        && !dropdown_response.contains_pointer()
+                    {
+                        self.open = false;
+                    }
+                } else if ui
                     .ctx()
                     .input(|i| i.pointer.button_down(egui::PointerButton::Primary))
-                    && !total_response.contains_pointer()
+                    && !input_response.contains_pointer()
                 {
                     self.open = false;
                 }
@@ -549,6 +573,7 @@ impl EguiSelect2 {
         };
         *locked_suggestions = None;
         self.open = false;
+        self.highlighted = None;
     }
 
     // Move the highlighted suggestion down.
