@@ -147,10 +147,10 @@ pub struct EguiSelect2 {
     offset: usize,
     /// Whether the widget has more suggestions to load.
     has_more: bool,
-    /// Whether the widget is loading suggestions.
-    loading: bool,
+    /// Whether the widget must load suggestions.
+    request_loading: bool,
     /// A thread has been spawned to load suggestions.
-    load: bool,
+    is_loading: bool,
     /// The last time the input was edited. Automatically managed by the widget to debounce input events.
     last_edit_time: f64,
     /// The last input text that triggered a suggestion load. Automatically managed by the widget to debounce input events.
@@ -206,8 +206,8 @@ impl Default for EguiSelect2 {
             suggestions: SharedSelect2Items::default(),
             new_suggestions: SharedSelect2Items::default(),
             has_more: true,
-            loading: false,
-            load: false,
+            request_loading: false,
+            is_loading: false,
             highlighted: None,
             open: false,
             last_edit_time: 0.0,
@@ -247,7 +247,7 @@ impl EguiSelect2 {
     /// This method must be called outside the `ui` method of the widget.
     /// See examples for usage.
     pub fn check_loading(&mut self) {
-        if self.loading && !self.load {
+        if self.request_loading && !self.is_loading {
             let cloned_load_fn = Arc::clone(&self.load_suggestions);
             let cloned_new_suggestions = Arc::clone(&self.new_suggestions);
             let limit = self.maximum_suggestions_number;
@@ -261,11 +261,14 @@ impl EguiSelect2 {
                 (cloned_load_fn)(cloned_new_suggestions, limit, offset, query);
             });
 
-            self.load = true;
+            self.is_loading = true;
         }
 
-        if self.loading {
+        if self.request_loading {
             // Acquire the locks on (new) suggestions.
+            // We have to ensure not to take locks in the reverse order in the code to avoid deadlocks.
+            // new_suggestions.lock();
+            // suggestions.lock();
             let mut locked_suggestions = match self.suggestions.lock() {
                 Ok(locked_suggestions) => locked_suggestions,
                 Err(e) => {
@@ -306,8 +309,9 @@ impl EguiSelect2 {
                 self.has_more = self.offset < new_suggestions.total;
 
                 // Loading complete.
-                self.load = false;
-                self.loading = false;
+                self.is_loading = false;
+                self.request_loading = false;
+                self.highlighted = None;
                 *locked_new_suggestions = None;
             }
         }
@@ -369,12 +373,14 @@ impl EguiSelect2 {
             (now - self.last_edit_time) > delay && self.input != self.autocomplete_triggered_for;
 
         // Trigger autocomplete after delay.
-        if debounce_delay_passed && !self.loading && (self.minimum_input_length <= self.input.len())
+        if debounce_delay_passed
+            && !self.request_loading
+            && (self.minimum_input_length <= self.input.len())
         {
             self.close_suggestions();
             self.autocomplete_triggered_for.clone_from(&self.input);
             self.offset = 0;
-            self.loading = true;
+            self.request_loading = true;
         }
 
         // Trigger autocomplete on first click when input is empty.
@@ -382,11 +388,11 @@ impl EguiSelect2 {
             self.close_suggestions();
             self.autocomplete_triggered_for.clone_from(&self.input);
             self.offset = 0;
-            self.loading = true;
+            self.request_loading = true;
         }
 
         // Open suggestions on focus.
-        if input_resp.has_focus() && !self.loading {
+        if input_resp.has_focus() && !self.request_loading {
             self.open = true;
         }
 
@@ -434,7 +440,7 @@ impl EguiSelect2 {
         let bg_stroke = widgets.noninteractive.bg_stroke;
         let bg_fill = widgets.inactive.bg_fill;
 
-        if self.loading {
+        if self.request_loading {
             ui.label(&self.translations.loading);
         }
 
@@ -488,10 +494,10 @@ impl EguiSelect2 {
 
                                         // Request the next page of suggestions.
                                         if self.has_more
-                                            && !self.loading
+                                            && !self.request_loading
                                             && ui.link(&self.translations.load_more).clicked()
                                         {
-                                            self.loading = true;
+                                            self.request_loading = true;
                                         }
                                     });
 
