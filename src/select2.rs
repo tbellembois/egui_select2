@@ -50,14 +50,9 @@ pub struct SelectItems {
 
 impl FromIterator<SelectItem> for SelectItems {
     fn from_iter<I: IntoIterator<Item = SelectItem>>(iter: I) -> Self {
-        let mut items = Vec::new();
-        for item in iter {
-            items.push(item);
-        }
-        SelectItems {
-            items: items.clone(),
-            total: items.len(),
-        }
+        let items: Vec<_> = iter.into_iter().collect();
+        let total = items.len();
+        SelectItems { items, total }
     }
 }
 
@@ -142,7 +137,7 @@ pub struct EguiSelect2 {
     /// The input text.
     input: String,
     /// The new suggestions to display.
-    new_suggestions: SharedSelect2Items,
+    pending_suggestions: SharedSelect2Items,
     /// The offset of the suggestions to load. Automatically managed by the widget.
     offset: usize,
     /// Whether the widget has more suggestions to load.
@@ -204,7 +199,7 @@ impl Default for EguiSelect2 {
             input: String::default(),
             selected: Vec::new(),
             suggestions: SharedSelect2Items::default(),
-            new_suggestions: SharedSelect2Items::default(),
+            pending_suggestions: SharedSelect2Items::default(),
             has_more: true,
             request_loading: false,
             is_loading: false,
@@ -249,7 +244,7 @@ impl EguiSelect2 {
     pub fn check_loading(&mut self) {
         if self.request_loading && !self.is_loading {
             let cloned_load_fn = Arc::clone(&self.load_suggestions);
-            let cloned_new_suggestions = Arc::clone(&self.new_suggestions);
+            let cloned_new_suggestions = Arc::clone(&self.pending_suggestions);
             let limit = self.maximum_suggestions_number;
             let offset = self.offset;
             let query = self.input.clone();
@@ -269,14 +264,14 @@ impl EguiSelect2 {
             // We have to ensure not to take locks in the reverse order in the code to avoid deadlocks.
             // new_suggestions.lock();
             // suggestions.lock();
-            let mut locked_suggestions = match self.suggestions.lock() {
+            let mut locked_suggestions = match self.suggestions.try_lock() {
                 Ok(locked_suggestions) => locked_suggestions,
                 Err(e) => {
                     log::error!("locked_suggestions lock error: {e}");
                     return;
                 }
             };
-            let mut locked_new_suggestions = match self.new_suggestions.lock() {
+            let mut locked_new_suggestions = match self.pending_suggestions.try_lock() {
                 Ok(locked_new_suggestions) => locked_new_suggestions,
                 Err(e) => {
                     log::error!("locked_new_suggestions lock error: {e}");
@@ -378,7 +373,7 @@ impl EguiSelect2 {
             && (self.minimum_input_length <= self.input.len())
         {
             self.close_suggestions();
-            self.autocomplete_triggered_for.clone_from(&self.input);
+            self.autocomplete_triggered_for = self.input.clone();
             self.offset = 0;
             self.request_loading = true;
         }
@@ -386,7 +381,7 @@ impl EguiSelect2 {
         // Trigger autocomplete on first click when input is empty.
         if input_resp.clicked() && self.last_edit_time == 0.0 && self.input.is_empty() {
             self.close_suggestions();
-            self.autocomplete_triggered_for.clone_from(&self.input);
+            self.autocomplete_triggered_for = self.input.clone();
             self.offset = 0;
             self.request_loading = true;
         }
@@ -411,7 +406,7 @@ impl EguiSelect2 {
                 }
                 if i.key_pressed(egui::Key::Enter) {
                     let cloned_suggestions = Arc::clone(&self.suggestions);
-                    let Ok(locked_suggestions) = cloned_suggestions.lock() else {
+                    let Ok(locked_suggestions) = cloned_suggestions.try_lock() else {
                         log::error!("locked_suggestions lock error");
                         return;
                     };
@@ -450,7 +445,9 @@ impl EguiSelect2 {
             let mut is_clicked = false;
 
             let popup_response = egui::Area::new(egui::Id::new(format!("popup_area_{}", self.id)))
-                .fixed_pos(self.input_rect.left_top() + egui::vec2(0.0, self.input_rect.height()))
+                .fixed_pos(
+                    self.input_rect.left_top() + egui::vec2(0.0, self.input_rect.height() + 0.2),
+                )
                 .default_width(self.input_rect.width())
                 .show(ui, |ui| {
                     egui::Frame::new()
@@ -459,7 +456,7 @@ impl EguiSelect2 {
                         .show(ui, |ui| {
                             ui.set_width(self.input_rect.width());
 
-                            let Ok(locked_suggestions) = suggestions.lock() else {
+                            let Ok(locked_suggestions) = suggestions.try_lock() else {
                                 log::error!("locked_suggestions lock error");
                                 return;
                             };
@@ -472,7 +469,7 @@ impl EguiSelect2 {
                                 egui::ScrollArea::vertical()
                                     .min_scrolled_height(self.scroll_min_height)
                                     .id_salt(ui.id().with(format!("scroll_{}", self.id)))
-                                    .max_height(self.scroll_min_height)
+                                    // .max_height(self.scroll_min_height)
                                     .show(ui, |ui| {
                                         ui.set_width(self.input_rect.width());
 
@@ -584,7 +581,7 @@ impl EguiSelect2 {
 
     // Close the suggestions
     fn close_suggestions(&mut self) {
-        let Ok(mut locked_suggestions) = self.suggestions.lock() else {
+        let Ok(mut locked_suggestions) = self.suggestions.try_lock() else {
             log::error!("locked_suggestions lock error");
             return;
         };
@@ -595,7 +592,7 @@ impl EguiSelect2 {
 
     // Move the highlighted suggestion down.
     fn move_down(&mut self) {
-        let Ok(locked_suggestions) = self.suggestions.lock() else {
+        let Ok(locked_suggestions) = self.suggestions.try_lock() else {
             log::error!("locked_suggestions lock error");
             return;
         };
