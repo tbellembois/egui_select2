@@ -145,5 +145,5 @@ self.my_select.selected.iter().for_each(|item| {
 ## Run examples
 
 ```bash
-cargo run --example basic|remote|pictures|disabled
+cargo run --example basic|remote|pictures|disabled|validate
 ```

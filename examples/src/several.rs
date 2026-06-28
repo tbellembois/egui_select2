@@ -62,11 +62,11 @@ fn my_load_suggestions(
 
 impl eframe::App for MyApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        egui::Window::new("Log").show(ui, |ui| {
-            egui_logger::logger_ui().show(ui);
-        });
+        // egui::Window::new("Log").show(ui, |ui| {
+        //     egui_logger::logger_ui().show(ui);
+        // });
 
-        egui::CentralPanel::default().show_inside(ui, |ui| {
+        egui::CentralPanel::default().show(ui, |ui| {
             ui.vertical(|ui| {
                 self.my_select1.check_loading();
                 self.my_select1.ui(ui);

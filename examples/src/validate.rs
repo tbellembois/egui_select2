@@ -1,6 +1,5 @@
 use std::{sync::Arc, thread::sleep};
 
-use egui::{Response, Ui, Vec2};
 use egui_select2::select2::{EguiSelect2, SelectItem, SelectItems, SharedSelect2Items};
 
 struct MyApp {
@@ -10,29 +9,40 @@ struct MyApp {
 impl Default for MyApp {
     fn default() -> Self {
         let mut my_select = EguiSelect2::default();
-        my_select.read_only = true;
+
+        my_select.read_only = false;
         my_select.multiple = true;
         my_select.minimum_input_length = 1;
-        my_select.maximum_suggestions_number = 10;
+        my_select.maximum_suggestions_number = 15;
+        my_select.close_on_select = false;
         my_select.load_suggestions = Arc::new(my_load_suggestions);
-        my_select.format_suggestion = Box::new(my_format_suggestion);
-        my_select.scroll_min_height = 400.0;
+        my_select.validate_new_item = Some(Arc::new(validate));
 
         Self { my_select }
     }
 }
 
-fn my_format_suggestion(ui: &mut Ui, selected: bool, select_item: &SelectItem) -> Response {
-    let image_name = format!("{}.png", select_item.label);
-    let image_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join(format!("examples/assets/{}", image_name));
-    let image =
-        egui::Image::new(format!("file://{}", image_path.to_string_lossy())).corner_radius(5.0);
+fn validate(s: &str) -> Result<String, String> {
+    let trimmed = s.trim();
 
-    let image = image.fit_to_exact_size(Vec2::new(20.0, 20.0));
-
-    ui.add(egui::Button::image_and_text(image, select_item.label.clone()).selected(selected))
+    if trimmed.is_empty() {
+        Err("Input cannot be empty".to_string())
+    } else if !trimmed.chars().all(|c| c.is_ascii_alphabetic()) {
+        Err("Input must be alphabetic".to_string())
+    } else {
+        Ok(trimmed.to_owned())
+    }
 }
+
+// Extraction from a https://crates.io/crates/egui-typed-input
+// pub fn my_validator() -> ValText<String, String> {
+//     ValText::new(
+//         // parser
+//         validate,
+//         // input validator
+//         |_current_text, input, _index| input.chars().all(|c| c.is_ascii_alphabetic()),
+//     )
+// }
 
 fn my_load_suggestions(
     suggestions: SharedSelect2Items,
@@ -42,7 +52,9 @@ fn my_load_suggestions(
 ) {
     sleep(std::time::Duration::from_secs(1));
 
-    let database: Vec<(u64, String)> = (1..9).map(|i| (i, format!("GHS0{}", i))).collect();
+    let database: Vec<(u64, String)> = (0..500)
+        .map(|i| (i, format!("This is item {}", i)))
+        .collect();
 
     let filtered = database
         .into_iter()
@@ -65,6 +77,10 @@ fn my_load_suggestions(
 
 impl eframe::App for MyApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        // egui::Window::new("Log").show(ui, |ui| {
+        //     egui_logger::logger_ui().show(ui);
+        // });
+
         egui::CentralPanel::default().show(ui, |ui| {
             self.my_select.check_loading();
             self.my_select.ui(ui);
@@ -93,12 +109,11 @@ impl eframe::App for MyApp {
 fn main() -> Result<(), eframe::Error> {
     let options = eframe::NativeOptions::default();
 
+    egui_logger::builder().init().unwrap();
+
     eframe::run_native(
         "Select2-like MultiSelect",
         options,
-        Box::new(|cc| {
-            egui_extras::install_image_loaders(&cc.egui_ctx);
-            Ok(Box::new(MyApp::default()))
-        }),
+        Box::new(|_cc| Ok(Box::new(MyApp::default()))),
     )
 }

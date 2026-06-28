@@ -20,6 +20,7 @@ pub type SharedSelect2Items = Arc<Mutex<Option<SelectItems>>>;
 pub type LoadSuggestionsFn = Arc<dyn Fn(SharedSelect2Items, usize, usize, String) + Send + Sync>;
 pub type FormatSuggestionFn =
     Box<dyn Fn(&mut Ui, bool, &SelectItem) -> egui::Response + Send + Sync>;
+pub type ValidateNewItemFn = Arc<dyn Fn(&str) -> Result<String, String> + Send + Sync>;
 
 // Widget translations.
 #[derive(Default, Clone)]
@@ -114,6 +115,8 @@ pub struct EguiSelect2 {
     pub load_suggestions: LoadSuggestionsFn,
     /// The function to format a suggestion in the dropdown.
     pub format_suggestion: FormatSuggestionFn,
+    /// The function to validate the input text.
+    pub validate_new_item: Option<ValidateNewItemFn>,
     /// The translations for the widget.
     pub translations: Translations,
     /// The maximum number of suggestions to load at once.
@@ -124,6 +127,8 @@ pub struct EguiSelect2 {
     pub disabled: bool,
     /// Whether the widget allows multiple selections.
     pub multiple: bool,
+    /// Show border around the widget.
+    pub show_border: bool,
     /// The minimum number of characters required to trigger a suggestion load.
     pub minimum_input_length: usize,
     /// The selected items.
@@ -136,6 +141,8 @@ pub struct EguiSelect2 {
     pub suggestions: SharedSelect2Items,
     /// The input text.
     input: String,
+    /// The validation error, if any.
+    validation_error: Option<String>,
     /// The new suggestions to display.
     pending_suggestions: SharedSelect2Items,
     /// The offset of the suggestions to load. Automatically managed by the widget.
@@ -178,6 +185,7 @@ impl Default for EguiSelect2 {
             scroll_min_height: DEFAULT_SCROLL_MIN_HEIGHT,
             multiple: false,
             read_only: true,
+            show_border: false,
             close_on_select: true,
             disabled: false,
             translations: Translations {
@@ -207,6 +215,8 @@ impl Default for EguiSelect2 {
             open: false,
             last_edit_time: 0.0,
             autocomplete_triggered_for: String::default(),
+            validate_new_item: None,
+            validation_error: None,
         }
     }
 }
@@ -335,7 +345,7 @@ impl EguiSelect2 {
                     self.selected.remove(i);
                 }
 
-                if self.multiple && ui.link(&self.translations.clear_all).clicked() {
+                if ui.link(&self.translations.clear_all).clicked() {
                     self.clear_selected_items();
                 }
             });
@@ -354,8 +364,24 @@ impl EguiSelect2 {
             ui.add(input_widget)
         };
 
-        // Set last edit time on input change.
+        // Show validation error, if any.
+        if let Some(err) = &self.validation_error {
+            ui.colored_label(egui::Color32::RED, err);
+        }
+
+        // Set last edit time on input change and validate input.
         if input_resp.changed() {
+            self.validation_error = None;
+
+            if !self.input.is_empty()
+                && let Some(validator) = &self.validate_new_item
+                && let Err(err) = validator(&self.input)
+            {
+                self.validation_error = Some(err);
+            } else {
+                self.validation_error = None;
+            }
+
             self.last_edit_time = ui.input(|i| i.time);
         }
 
@@ -379,11 +405,12 @@ impl EguiSelect2 {
         }
 
         // Trigger autocomplete on first click when input is empty.
-        if input_resp.clicked() && self.last_edit_time == 0.0 && self.input.is_empty() {
+        if input_resp.clicked() && self.input.is_empty() {
             self.close_suggestions();
             self.autocomplete_triggered_for = self.input.clone();
             self.offset = 0;
             self.request_loading = true;
+            self.validation_error = None;
         }
 
         // Open suggestions on focus.
@@ -418,9 +445,9 @@ impl EguiSelect2 {
                 if i.key_pressed(egui::Key::Escape) {
                     self.close_suggestions();
                 }
-                if i.key_pressed(egui::Key::Backspace) && self.input.is_empty() {
-                    self.selected.pop();
-                }
+                // if i.key_pressed(egui::Key::Backspace) && self.input.is_empty() {
+                //     self.selected.pop();
+                // }
             });
         }
     }
@@ -441,7 +468,7 @@ impl EguiSelect2 {
 
         let mut response: Option<egui::Response> = None;
 
-        if self.open {
+        if self.open && self.validation_error.is_none() {
             let mut is_clicked = false;
 
             let popup_response = egui::Area::new(egui::Id::new(format!("popup_area_{}", self.id)))
@@ -461,10 +488,16 @@ impl EguiSelect2 {
                                 return;
                             };
 
+                            let mut input_in_suggestions = false;
+
                             if let Some(suggestions) = locked_suggestions.as_ref()
                                 && suggestions.total > 0
                             {
                                 let mut clicked_index = None;
+                                input_in_suggestions = suggestions
+                                    .items
+                                    .iter()
+                                    .any(|item| item.label == self.input);
 
                                 egui::ScrollArea::vertical()
                                     .min_scrolled_height(self.scroll_min_height)
@@ -514,16 +547,18 @@ impl EguiSelect2 {
                                     is_clicked = true;
                                 }
                             } else {
-                                // There is no suggestions to display.
-                                if self.input.is_empty() || self.read_only {
-                                    ui.label(&self.translations.no_results);
-                                } else if !self.read_only
-                                    && ui
-                                        .button(format!(
-                                            "{} \"{}\"",
-                                            self.translations.add, self.input
-                                        ))
-                                        .clicked()
+                                ui.label(&self.translations.no_results);
+                            }
+
+                            if !input_in_suggestions
+                                && !self.read_only
+                                && !self.input.is_empty()
+                                && self.validation_error.is_none()
+                            {
+                                ui.label("");
+                                if ui
+                                    .link(format!("{} \"{}\"", self.translations.add, self.input))
+                                    .clicked()
                                 {
                                     self.add_new();
                                 }
@@ -549,31 +584,45 @@ impl EguiSelect2 {
         let response = ui.vertical(|ui| {
             let cloned_suggestions = Arc::clone(&self.suggestions);
 
-            self.render_selected_items(ui);
-            let input_response = self.render_input(ui);
-            self.render_keyboard_actions(ui);
-            let maybe_dropdown_response = self.render_dropdown(ui, &cloned_suggestions);
+            let widgets = &ui.visuals().widgets;
+            let normal_stroke = widgets.noninteractive.bg_stroke;
+            let corner_radius = ui.style().visuals.menu_corner_radius;
 
-            self.input_rect = input_response.rect;
+            let mut frame = egui::Frame::new()
+                .corner_radius(corner_radius)
+                .inner_margin(5.0);
 
-            if self.open {
-                if let Some(dropdown_response) = maybe_dropdown_response {
-                    if ui
+            if self.show_border {
+                frame = frame.stroke(normal_stroke);
+            }
+
+            frame.show(ui, |ui| {
+                self.render_selected_items(ui);
+                let input_response = self.render_input(ui);
+                self.render_keyboard_actions(ui);
+                let maybe_dropdown_response = self.render_dropdown(ui, &cloned_suggestions);
+
+                self.input_rect = input_response.rect;
+
+                if self.open {
+                    if let Some(dropdown_response) = maybe_dropdown_response {
+                        if ui
+                            .ctx()
+                            .input(|i| i.pointer.button_down(egui::PointerButton::Primary))
+                            && !input_response.contains_pointer()
+                            && !dropdown_response.contains_pointer()
+                        {
+                            self.open = false;
+                        }
+                    } else if ui
                         .ctx()
                         .input(|i| i.pointer.button_down(egui::PointerButton::Primary))
                         && !input_response.contains_pointer()
-                        && !dropdown_response.contains_pointer()
                     {
                         self.open = false;
                     }
-                } else if ui
-                    .ctx()
-                    .input(|i| i.pointer.button_down(egui::PointerButton::Primary))
-                    && !input_response.contains_pointer()
-                {
-                    self.open = false;
                 }
-            }
+            });
         });
 
         response.response
@@ -653,18 +702,25 @@ impl EguiSelect2 {
 
     // Add a new custom item to the selected items.
     fn add_new(&mut self) {
-        if !self.input.is_empty() {
-            let new_item = SelectItem {
-                id: None,
-                label: self.input.clone(),
-            };
-
-            if !self.selected.iter().any(|x| x.label == new_item.label) {
-                self.selected.push(new_item);
+        let label = if let Some(validator) = &self.validate_new_item {
+            match validator(&self.input) {
+                Ok(validated) => validated,
+                Err(err) => {
+                    self.validation_error = Some(err);
+                    return;
+                }
             }
+        } else {
+            self.input.clone()
+        };
 
-            self.input.clear();
-            self.close_suggestions();
+        let new_item = SelectItem { id: None, label };
+
+        if !self.selected.iter().any(|x| x.label == new_item.label) {
+            self.selected.push(new_item);
         }
+
+        self.input.clear();
+        self.close_suggestions();
     }
 }
