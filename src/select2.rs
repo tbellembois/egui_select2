@@ -1,5 +1,8 @@
 use eframe::egui;
-use egui::{Pos2, Rect, Ui};
+use egui::{
+    Button, FontId, Pos2, Rect, Ui,
+    text::{LayoutJob, TextWrapping},
+};
 use serde::{Deserialize, Serialize};
 use std::{
     iter::FromIterator,
@@ -324,29 +327,54 @@ impl EguiSelect2 {
 
     // Render the selected items as clickable labels.
     fn render_selected_items(&mut self, ui: &mut egui::Ui) {
+        let default_text_color = ui.style().visuals.text_color();
+
         if !self.selected.is_empty() {
-            ui.horizontal_wrapped(|ui| {
+            ui.vertical(|ui| {
                 // Index of the item to remove.
                 let mut remove_idx = None;
 
-                ui.set_max_width(200.0);
+                ui.spacing_mut().item_spacing.x = 6.0;
+                ui.spacing_mut().item_spacing.y = 6.0;
+
+                if ui.link(&self.translations.clear_all).clicked() {
+                    self.clear_selected_items();
+                }
 
                 for (i, item) in self.selected.iter().enumerate() {
-                    ui.spacing_mut().item_spacing.x = 6.0;
-                    ui.spacing_mut().item_spacing.y = 6.0;
+                    // 1. Create the LayoutJob
+                    let mut job = LayoutJob::simple(
+                        item.label.clone(),
+                        FontId::default(),
+                        default_text_color,
+                        f32::INFINITY, // Don't limit width here, we do it in 'wrap'
+                    );
 
-                    if ui.button(&item.label).clicked() {
+                    // 2. Enforce Single Line Truncation
+                    job.wrap = TextWrapping {
+                        max_width: self.input_rect.width(), // The available width
+                        max_rows: 1, // CRITICAL: Force 1 line. Anything longer is truncated.
+                        break_anywhere: false, // Keep words intact if possible
+                        overflow_character: Some('…'), // Add ellipsis
+                    };
+
+                    // 3. Pass the Job directly to Button::new
+                    // LayoutJob implements Into<WidgetText>
+                    let button = Button::new(job).truncate();
+
+                    // 4. Add with fixed size
+                    let response = ui
+                        .add_sized([self.input_rect.width(), 0.0], button)
+                        .on_hover_text(item.label.clone());
+
+                    if response.clicked() {
                         remove_idx = Some(i);
                     }
                 }
 
-                // Remove the selected item if the user clicks the "✕" button.
+                // Remove the selected item if the user clicks on it.
                 if let Some(i) = remove_idx {
                     self.selected.remove(i);
-                }
-
-                if ui.link(&self.translations.clear_all).clicked() {
-                    self.clear_selected_items();
                 }
             });
         }
@@ -354,8 +382,9 @@ impl EguiSelect2 {
 
     // Render the input text field.
     fn render_input(&mut self, ui: &mut egui::Ui) -> egui::Response {
-        let input_widget =
-            egui::TextEdit::singleline(&mut self.input).hint_text(&self.translations.hint);
+        let input_widget = egui::TextEdit::singleline(&mut self.input)
+            .hint_text(&self.translations.hint)
+            .desired_width(f32::INFINITY);
 
         // Manage input widget state based on disabled state.
         let input_resp = if self.disabled {
@@ -458,6 +487,7 @@ impl EguiSelect2 {
         ui: &mut egui::Ui,
         suggestions: &SharedSelect2Items,
     ) -> Option<egui::Response> {
+        // Styles.
         let widgets = &ui.visuals().widgets;
         let bg_stroke = widgets.noninteractive.bg_stroke;
         let bg_fill = widgets.inactive.bg_fill;
@@ -502,7 +532,6 @@ impl EguiSelect2 {
                                 egui::ScrollArea::vertical()
                                     .min_scrolled_height(self.scroll_min_height)
                                     .id_salt(ui.id().with(format!("scroll_{}", self.id)))
-                                    // .max_height(self.scroll_min_height)
                                     .show(ui, |ui| {
                                         ui.set_width(self.input_rect.width());
 
@@ -584,26 +613,35 @@ impl EguiSelect2 {
         let response = ui.vertical(|ui| {
             let cloned_suggestions = Arc::clone(&self.suggestions);
 
+            // Styles.
             let widgets = &ui.visuals().widgets;
             let normal_stroke = widgets.noninteractive.bg_stroke;
             let corner_radius = ui.style().visuals.menu_corner_radius;
 
+            // Main frame.
             let mut frame = egui::Frame::new()
                 .corner_radius(corner_radius)
                 .inner_margin(5.0);
 
+            // Border if defined.
             if self.show_border {
                 frame = frame.stroke(normal_stroke);
             }
 
             frame.show(ui, |ui| {
+                // Render selected items.
                 self.render_selected_items(ui);
+                // Render input.
                 let input_response = self.render_input(ui);
+                // Render keyboard actions.
                 self.render_keyboard_actions(ui);
+                // Render dropdown.
                 let maybe_dropdown_response = self.render_dropdown(ui, &cloned_suggestions);
 
+                // Update input rect.
                 self.input_rect = input_response.rect;
 
+                // Close on pointer outside input or dropdown.
                 if self.open {
                     if let Some(dropdown_response) = maybe_dropdown_response {
                         if ui

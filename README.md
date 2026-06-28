@@ -74,6 +74,10 @@ impl eframe::App for MyApp {
 
 ## Data
 
+Please see examples.
+
+### Suggestions
+
 The suggestions are represented as a shareable struct:
 
 ```bash
@@ -81,22 +85,36 @@ pub type SharedSelect2Items = Arc<Mutex<Option<SelectItems>>>;
 ```
 
 ```bash
+pub struct SelectItem {
+    pub id: Option<String>,
+    pub label: String,
+}
+
 pub struct SelectItems {
     pub items: Vec<SelectItem>,
     pub total: usize,
 }
 ```
 
-with `SelectItem`:
+`id` is expected to be set for existing suggestions and `None` for newly entered items.
+
+### Suggestion formatting
+
+The suggestions format are represented as a shareable function:
 
 ```bash
-pub struct SelectItem {
-    pub id: Option<String>,
-    pub label: String,
-}
+pub type FormatSuggestionFn = Arc<dyn Fn(&SelectItem) -> String + Send + Sync>;
 ```
 
-`id` is expected to be set for existing suggestions and `None` for newly entered items.
+### New items validation
+
+The new items can be validated using a shareable function:
+
+```bash
+pub type ValidateNewItemFn = Arc<dyn Fn(&str) -> bool + Send + Sync>;
+```
+
+### Translations
 
 The strings can be translated using the `translations` parameter.
 
@@ -112,25 +130,29 @@ pub struct Translations {
 
 ## Parameters
 
-- `load_suggestions: Box<dyn Fn(usize, usize, &str) -> SelectItems>` The function to load suggestions. REQUIRED
+- `load_suggestions: LoadSuggestionsFn` The function to load suggestions. REQUIRED
 
-- `format_suggestion: Box<dyn Fn(&mut Ui, bool, &SelectItem) -> Response>` The function to format a suggestion in the dropdown.
+- `format_suggestion: FormatSuggestionFn` The function to format a suggestion in the dropdown. OPTIONAL - default is a simple string.
 
-- `maximum_suggestions_number: usize` The maximum number of suggestions to load at once.
+- `pub validate_new_item: ValidateNewItemFn` The function to validate a new item entered by the user. OPTIONAL - default is no validation.
 
-- `minimum_input_length: usize` The minimum number of characters required to trigger a suggestion load.
+- `maximum_suggestions_number: usize` The maximum number of suggestions to load at once. OPTIONAL - default is 10.
 
-- `scroll_min_height: f32` The scroll min height.
+- `minimum_input_length: usize` The minimum number of characters required to trigger a suggestion load. OPTIONAL - default is 1.
 
-- `read_only: bool` Whether the widget is read-only. Setting this to `false` allows the user to enter new items.
+- `scroll_min_height: f32` The scroll min height. OPTIONAL - default is 400px.
 
-- `close_on_select` Whether to close the widget when a suggestion is selected.
+- `read_only: bool` Whether the widget is read-only. Setting this to `false` allows the user to enter new items. OPTIONAL - default is `true`.
 
-- `disabled` Whether the widget is disabled.
+- `close_on_select` Whether to close the widget when a suggestion is selected. OPTIONAL - default is `true`.
 
-- `multiple` Whether the widget allows multiple selections.
+- `disabled` Whether the widget is disabled. OPTIONAL - default is `false`.
 
-- `translations` The translations to use for the widget.
+- `multiple` Whether the widget allows multiple selections. OPTIONAL - default is `false`.
+
+- `show_border` Whether to show a border around the widget. OPTIONAL - default is `false`.
+
+- `translations` The translations to use for the widget. OPTIONAL - default is no translations.
 
 ## Selected values
 
