@@ -13,12 +13,12 @@ keywords = ["egui","select2", "widget"]
 rust-version = "1.92.0"
 
 [dependencies]
-eframe = "0.35.0"
-egui = "0.35.0"
-log = "0.4.29"
-rand = { version = "0.7", features = ["wasm-bindgen"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1.0.149"
+eframe = { version = "0.35.0" }
+egui = { version = "0.35.0", default-features = false }
+log =  { version = "0.4.29", default-features = false }
+rand = { version = "0.7", default-features = false, features = ["wasm-bindgen", "std"] }
+serde = { version = "1", default-features = false, features = ["derive"] }
+serde_json = { version = "1.0.150", default-features = false, features = ["std"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures = "0.4.68"

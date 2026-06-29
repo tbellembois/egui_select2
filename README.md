@@ -74,7 +74,7 @@ impl eframe::App for MyApp {
 
 ## Data
 
-Please see examples.
+> Please see examples.
 
 ### Suggestions
 
@@ -100,7 +100,7 @@ pub struct SelectItems {
 
 ### Suggestion formatting
 
-The suggestions format are represented as a shareable function:
+The suggestions format can be customized using a shareable function:
 
 ```bash
 pub type FormatSuggestionFn = Arc<dyn Fn(&SelectItem) -> String + Send + Sync>;

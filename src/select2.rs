@@ -488,9 +488,13 @@ impl EguiSelect2 {
         suggestions: &SharedSelect2Items,
     ) -> Option<egui::Response> {
         // Styles.
+        let visuals = ui.visuals();
+        let style = ui.style();
         let widgets = &ui.visuals().widgets;
         let bg_stroke = widgets.noninteractive.bg_stroke;
         let bg_fill = widgets.inactive.bg_fill;
+        let corner_radius = style.visuals.window_corner_radius;
+        let extreme_bg_color = visuals.extreme_bg_color;
 
         if self.request_loading {
             ui.label(&self.translations.loading);
@@ -584,13 +588,24 @@ impl EguiSelect2 {
                                 && !self.input.is_empty()
                                 && self.validation_error.is_none()
                             {
-                                ui.label("");
-                                if ui
-                                    .link(format!("{} \"{}\"", self.translations.add, self.input))
-                                    .clicked()
-                                {
-                                    self.add_new();
-                                }
+                                let frame = egui::Frame::new()
+                                    .fill(extreme_bg_color)
+                                    .inner_margin(5.0)
+                                    .outer_margin(10.0)
+                                    .corner_radius(corner_radius)
+                                    .stroke(bg_stroke);
+
+                                frame.show(ui, |ui| {
+                                    if ui
+                                        .link(format!(
+                                            "{} \"{}\"",
+                                            self.translations.add, self.input
+                                        ))
+                                        .clicked()
+                                    {
+                                        self.add_new();
+                                    }
+                                });
                             }
                         });
                 });
