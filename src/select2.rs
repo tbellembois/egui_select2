@@ -15,6 +15,7 @@ const DEFAULT_MAXIMUM_SUGGESTIONS_NUMBER: usize = 10;
 const DEFAULT_LOADING_TEXT: &str = "Loading";
 const DEFAULT_NO_RESULTS_TEXT: &str = "No results";
 const DEFAULT_ADD_TEXT: &str = "Add";
+const DEFAULT_NEW_TEXT: &str = "New";
 const DEFAULT_CLEAR_ALL_TEXT: &str = "Clear all";
 const DEFAULT_LOAD_MORE_TEXT: &str = "Load more results";
 const DEFAULT_HINT_TEXT: &str = "Search";
@@ -30,6 +31,7 @@ pub type ValidateNewItemFn = Arc<dyn Fn(&str) -> Result<String, String> + Send +
 pub struct Translations {
     pub loading: String,
     pub no_results: String,
+    pub new: String,
     pub add: String,
     pub clear_all: String,
     pub load_more: String,
@@ -195,6 +197,7 @@ impl Default for EguiSelect2 {
                 loading: DEFAULT_LOADING_TEXT.to_string(),
                 no_results: DEFAULT_NO_RESULTS_TEXT.to_string(),
                 add: DEFAULT_ADD_TEXT.to_string(),
+                new: DEFAULT_NEW_TEXT.to_string(),
                 clear_all: DEFAULT_CLEAR_ALL_TEXT.to_string(),
                 load_more: DEFAULT_LOAD_MORE_TEXT.to_string(),
                 hint: DEFAULT_HINT_TEXT.to_string(),
@@ -342,9 +345,14 @@ impl EguiSelect2 {
                 }
 
                 for (i, item) in self.selected.iter().enumerate() {
+                    let mut display_label = item.label.clone();
+                    if item.id.is_none() {
+                        display_label = format!("{display_label} [ {} ]", self.translations.new);
+                    }
+
                     // 1. Create the LayoutJob
                     let mut job = LayoutJob::simple(
-                        item.label.clone(),
+                        display_label,
                         FontId::default(),
                         default_text_color,
                         f32::INFINITY, // Don't limit width here, we do it in 'wrap'
