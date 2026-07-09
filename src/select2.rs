@@ -642,9 +642,7 @@ impl EguiSelect2 {
             let corner_radius = ui.style().visuals.menu_corner_radius;
 
             // Main frame.
-            let mut frame = egui::Frame::new()
-                .corner_radius(corner_radius)
-                .inner_margin(5.0);
+            let mut frame = egui::Frame::new().corner_radius(corner_radius);
 
             // Border if defined.
             if self.show_border {
