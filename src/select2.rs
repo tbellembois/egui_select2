@@ -340,10 +340,6 @@ impl EguiSelect2 {
                 ui.spacing_mut().item_spacing.x = 6.0;
                 ui.spacing_mut().item_spacing.y = 6.0;
 
-                if ui.link(&self.translations.clear_all).clicked() {
-                    self.clear_selected_items();
-                }
-
                 for (i, item) in self.selected.iter().enumerate() {
                     let mut display_label = item.label.clone();
                     if item.id.is_none() {
@@ -379,6 +375,12 @@ impl EguiSelect2 {
                         remove_idx = Some(i);
                     }
                 }
+
+                ui.centered_and_justified(|ui| {
+                    if ui.link(&self.translations.clear_all).clicked() {
+                        self.clear_selected_items();
+                    }
+                });
 
                 // Remove the selected item if the user clicks on it.
                 if let Some(i) = remove_idx {
