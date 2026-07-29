@@ -19,17 +19,11 @@ impl Default for MyApp {
 }
 
 fn my_load_suggestions(
-    suggestions: SharedSelect2Items,
+    suggestions: &SharedSelect2Items,
     _limit: usize,
     _offset: usize,
-    query: String,
+    query: &str,
 ) {
-    let request = ehttp::Request::get(format!("https://swapi.dev/api/people/?search={}", query))
-        .with_headers(ehttp::Headers::new(&[(
-            "Content-Type",
-            "application/json; charset=UTF-8;",
-        )]));
-
     #[derive(Debug, serde::Deserialize)]
     struct SamplePerson {
         pub name: String,
@@ -41,6 +35,11 @@ fn my_load_suggestions(
         pub count: usize,
         pub results: Vec<SamplePerson>,
     }
+
+    let request =
+        ehttp::Request::get(format!("https://swapi.dev/api/people/?search={query}")).with_headers(
+            ehttp::Headers::new(&[("Content-Type", "application/json; charset=UTF-8;")]),
+        );
 
     let response = ehttp::fetch_blocking(&request);
 

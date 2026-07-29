@@ -20,6 +20,11 @@ impl Default for MyApp {
 
         let mut my_select2 = EguiSelect2::default();
 
+        my_select2.read_only = false;
+        my_select2.multiple = true;
+        my_select2.minimum_input_length = 1;
+        my_select2.maximum_suggestions_number = 15;
+        my_select2.close_on_select = false;
         my_select2.load_suggestions = Arc::new(my_load_suggestions);
 
         Self {
@@ -29,21 +34,14 @@ impl Default for MyApp {
     }
 }
 
-fn my_load_suggestions(
-    suggestions: SharedSelect2Items,
-    limit: usize,
-    offset: usize,
-    query: String,
-) {
+fn my_load_suggestions(suggestions: &SharedSelect2Items, limit: usize, offset: usize, query: &str) {
     sleep(std::time::Duration::from_secs(1));
 
-    let database: Vec<(u64, String)> = (0..500)
-        .map(|i| (i, format!("This is item {}", i)))
-        .collect();
+    let database: Vec<(u64, String)> = (0..500).map(|i| (i, format!("This is item {i}"))).collect();
 
     let filtered = database
         .into_iter()
-        .filter(|(_, label)| label.to_lowercase().contains(query.as_str()));
+        .filter(|(_, label)| label.to_lowercase().contains(query));
 
     let total = filtered.clone().count();
 
@@ -67,43 +65,14 @@ impl eframe::App for MyApp {
         // });
 
         egui::CentralPanel::default().show(ui, |ui| {
-            ui.vertical(|ui| {
+            ui.horizontal_wrapped(|ui| {
                 self.my_select1.check_loading();
                 self.my_select1.ui(ui);
 
-                let locked_suggestions = self.my_select1.suggestions.lock().unwrap();
-
-                if let Some(suggestions) = locked_suggestions.as_ref() {
-                    ui.separator();
-                    ui.label(format!("Loaded: {}", suggestions.items.len()));
-                } else {
-                    ui.separator();
-                    ui.label("Loaded: 0");
-                }
-
                 ui.separator();
-                self.my_select1.selected.iter().for_each(|item| {
-                    ui.label(format!("Selected: {:?} {}", item.id, item.label.clone()));
-                });
 
-                ui.separator();
                 self.my_select2.check_loading();
                 self.my_select2.ui(ui);
-
-                let locked_suggestions = self.my_select2.suggestions.lock().unwrap();
-
-                if let Some(suggestions) = locked_suggestions.as_ref() {
-                    ui.separator();
-                    ui.label(format!("Loaded: {}", suggestions.items.len()));
-                } else {
-                    ui.separator();
-                    ui.label("Loaded: 0");
-                }
-
-                ui.separator();
-                self.my_select2.selected.iter().for_each(|item| {
-                    ui.label(format!("Selected: {:?} {}", item.id, item.label.clone()));
-                });
             });
         });
 

@@ -59,8 +59,12 @@ name = "disabled"
 path = "examples/src/disabled.rs"
 
 [[example]]
-name = "several"
-path = "examples/src/several.rs"
+name = "several_vertical"
+path = "examples/src/several_vertical.rs"
+
+[[example]]
+name = "several_horizontal"
+path = "examples/src/several_horizontal.rs"
 
 [[example]]
 name = "long"

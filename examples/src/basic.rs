@@ -21,21 +21,14 @@ impl Default for MyApp {
     }
 }
 
-fn my_load_suggestions(
-    suggestions: SharedSelect2Items,
-    limit: usize,
-    offset: usize,
-    query: String,
-) {
+fn my_load_suggestions(suggestions: &SharedSelect2Items, limit: usize, offset: usize, query: &str) {
     sleep(std::time::Duration::from_secs(1));
 
-    let database: Vec<(u64, String)> = (0..500)
-        .map(|i| (i, format!("This is item {}", i)))
-        .collect();
+    let database: Vec<(u64, String)> = (0..500).map(|i| (i, format!("This is item {i}"))).collect();
 
     let filtered = database
         .into_iter()
-        .filter(|(_, label)| label.to_lowercase().contains(query.as_str()));
+        .filter(|(_, label)| label.to_lowercase().contains(query));
 
     let total = filtered.clone().count();
 

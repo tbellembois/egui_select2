@@ -21,7 +21,7 @@ const DEFAULT_LOAD_MORE_TEXT: &str = "Load more results";
 const DEFAULT_HINT_TEXT: &str = "Search";
 
 pub type SharedSelect2Items = Arc<Mutex<Option<SelectItems>>>;
-pub type LoadSuggestionsFn = Arc<dyn Fn(SharedSelect2Items, usize, usize, String) + Send + Sync>;
+pub type LoadSuggestionsFn = Arc<dyn Fn(&SharedSelect2Items, usize, usize, &str) + Send + Sync>;
 pub type FormatSuggestionFn =
     Box<dyn Fn(&mut Ui, bool, &SelectItem) -> egui::Response + Send + Sync>;
 pub type ValidateNewItemFn = Arc<dyn Fn(&str) -> Result<String, String> + Send + Sync>;
@@ -269,7 +269,7 @@ impl EguiSelect2 {
 
             // Trigger the load.
             crate::spawn::spawn(move || {
-                (cloned_load_fn)(cloned_new_suggestions, limit, offset, query);
+                (cloned_load_fn)(&cloned_new_suggestions, limit, offset, &query);
             });
 
             self.is_loading = true;
@@ -363,7 +363,6 @@ impl EguiSelect2 {
                     };
 
                     // 3. Pass the Job directly to Button::new
-                    // LayoutJob implements Into<WidgetText>
                     let button = Button::new(job).truncate();
 
                     // 4. Add with fixed size
@@ -376,11 +375,11 @@ impl EguiSelect2 {
                     }
                 }
 
-                ui.centered_and_justified(|ui| {
-                    if ui.link(&self.translations.clear_all).clicked() {
-                        self.clear_selected_items();
-                    }
-                });
+                // ui.centered_and_justified(|ui| {
+                if ui.link(&self.translations.clear_all).clicked() {
+                    self.clear_selected_items();
+                }
+                // });
 
                 // Remove the selected item if the user clicks on it.
                 if let Some(i) = remove_idx {
@@ -392,9 +391,8 @@ impl EguiSelect2 {
 
     // Render the input text field.
     fn render_input(&mut self, ui: &mut egui::Ui) -> egui::Response {
-        let input_widget = egui::TextEdit::singleline(&mut self.input)
-            .hint_text(&self.translations.hint)
-            .desired_width(f32::INFINITY);
+        let input_widget =
+            egui::TextEdit::singleline(&mut self.input).hint_text(&self.translations.hint);
 
         // Manage input widget state based on disabled state.
         let input_resp = if self.disabled {
@@ -484,9 +482,6 @@ impl EguiSelect2 {
                 if i.key_pressed(egui::Key::Escape) {
                     self.close_suggestions();
                 }
-                // if i.key_pressed(egui::Key::Backspace) && self.input.is_empty() {
-                //     self.selected.pop();
-                // }
             });
         }
     }
@@ -640,8 +635,9 @@ impl EguiSelect2 {
 
             // Styles.
             let widgets = &ui.visuals().widgets;
+            let style = &ui.style();
             let normal_stroke = widgets.noninteractive.bg_stroke;
-            let corner_radius = ui.style().visuals.menu_corner_radius;
+            let corner_radius = style.visuals.menu_corner_radius;
 
             // Main frame.
             let mut frame = egui::Frame::new().corner_radius(corner_radius);

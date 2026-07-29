@@ -25,7 +25,7 @@ impl Default for MyApp {
 fn my_format_suggestion(ui: &mut Ui, selected: bool, select_item: &SelectItem) -> Response {
     let image_name = format!("{}.png", select_item.label);
     let image_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join(format!("examples/assets/{}", image_name));
+        .join(format!("examples/assets/{image_name}"));
     let image =
         egui::Image::new(format!("file://{}", image_path.to_string_lossy())).corner_radius(5.0);
 
@@ -34,19 +34,14 @@ fn my_format_suggestion(ui: &mut Ui, selected: bool, select_item: &SelectItem) -
     ui.add(egui::Button::image_and_text(image, select_item.label.clone()).selected(selected))
 }
 
-fn my_load_suggestions(
-    suggestions: SharedSelect2Items,
-    limit: usize,
-    offset: usize,
-    query: String,
-) {
+fn my_load_suggestions(suggestions: &SharedSelect2Items, limit: usize, offset: usize, query: &str) {
     sleep(std::time::Duration::from_secs(1));
 
-    let database: Vec<(u64, String)> = (1..9).map(|i| (i, format!("GHS0{}", i))).collect();
+    let database: Vec<(u64, String)> = (1..9).map(|i| (i, format!("GHS0{i}"))).collect();
 
     let filtered = database
         .into_iter()
-        .filter(|(_, label)| label.to_lowercase().contains(query.as_str()));
+        .filter(|(_, label)| label.to_lowercase().contains(query));
 
     let total = filtered.clone().count();
 

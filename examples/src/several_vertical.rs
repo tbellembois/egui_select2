@@ -3,37 +3,36 @@ use std::{sync::Arc, thread::sleep};
 use egui_select2::select2::{EguiSelect2, SelectItem, SelectItems, SharedSelect2Items};
 
 struct MyApp {
-    my_select: EguiSelect2,
+    my_select1: EguiSelect2,
+    my_select2: EguiSelect2,
 }
 
 impl Default for MyApp {
     fn default() -> Self {
-        let mut my_select = EguiSelect2::default();
+        let mut my_select1 = EguiSelect2::default();
 
-        my_select.read_only = false;
-        my_select.multiple = true;
-        my_select.minimum_input_length = 1;
-        my_select.maximum_suggestions_number = 15;
-        my_select.close_on_select = false;
-        my_select.load_suggestions = Arc::new(my_load_suggestions);
+        my_select1.read_only = false;
+        my_select1.multiple = true;
+        my_select1.minimum_input_length = 1;
+        my_select1.maximum_suggestions_number = 15;
+        my_select1.close_on_select = false;
+        my_select1.load_suggestions = Arc::new(my_load_suggestions);
 
-        Self { my_select }
+        let mut my_select2 = EguiSelect2::default();
+
+        my_select2.load_suggestions = Arc::new(my_load_suggestions);
+
+        Self {
+            my_select1,
+            my_select2,
+        }
     }
 }
 
 fn my_load_suggestions(suggestions: &SharedSelect2Items, limit: usize, offset: usize, query: &str) {
     sleep(std::time::Duration::from_secs(1));
 
-    let database: Vec<(u64, String)> = (0..500)
-        .map(|i| {
-            (
-                i,
-                format!(
-                    "This is a very long item that should be truncated or it will overflow {i}"
-                ),
-            )
-        })
-        .collect();
+    let database: Vec<(u64, String)> = (0..500).map(|i| (i, format!("This is item {i}"))).collect();
 
     let filtered = database
         .into_iter()
@@ -61,22 +60,14 @@ impl eframe::App for MyApp {
         // });
 
         egui::CentralPanel::default().show(ui, |ui| {
-            self.my_select.check_loading();
-            self.my_select.ui(ui);
+            ui.vertical(|ui| {
+                self.my_select1.check_loading();
+                self.my_select1.ui(ui);
 
-            let locked_suggestions = self.my_select.suggestions.lock().unwrap();
-
-            if let Some(suggestions) = locked_suggestions.as_ref() {
                 ui.separator();
-                ui.label(format!("Loaded: {}", suggestions.items.len()));
-            } else {
-                ui.separator();
-                ui.label("Loaded: 0");
-            }
 
-            ui.separator();
-            self.my_select.selected.iter().for_each(|item| {
-                ui.label(format!("Selected: {:?} {}", item.id, item.label.clone()));
+                self.my_select2.check_loading();
+                self.my_select2.ui(ui);
             });
         });
 
