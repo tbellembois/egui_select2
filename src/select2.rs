@@ -375,11 +375,10 @@ impl EguiSelect2 {
                     }
                 }
 
-                // ui.centered_and_justified(|ui| {
-                if ui.link(&self.translations.clear_all).clicked() {
+                let link = egui::Link::new(&self.translations.clear_all);
+                if ui.add_sized([self.input_rect.width(), 0.0], link).clicked() {
                     self.clear_selected_items();
                 }
-                // });
 
                 // Remove the selected item if the user clicks on it.
                 if let Some(i) = remove_idx {
