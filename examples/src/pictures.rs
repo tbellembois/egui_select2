@@ -10,13 +10,14 @@ struct MyApp {
 impl Default for MyApp {
     fn default() -> Self {
         let mut my_select = EguiSelect2::default();
-        my_select.read_only = true;
-        my_select.multiple = true;
-        my_select.minimum_input_length = 1;
-        my_select.maximum_suggestions_number = 10;
+
+        my_select.configuration.read_only = true;
+        my_select.configuration.multiple = true;
+        my_select.configuration.minimum_input_length = 1;
+        my_select.configuration.maximum_suggestions_number = 10;
+
         my_select.load_suggestions = Arc::new(my_load_suggestions);
         my_select.format_suggestion = Box::new(my_format_suggestion);
-        my_select.scroll_min_height = 400.0;
 
         Self { my_select }
     }

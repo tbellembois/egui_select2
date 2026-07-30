@@ -11,20 +11,22 @@ impl Default for MyApp {
     fn default() -> Self {
         let mut my_select1 = EguiSelect2::default();
 
-        my_select1.read_only = false;
-        my_select1.multiple = true;
-        my_select1.minimum_input_length = 1;
-        my_select1.maximum_suggestions_number = 15;
-        my_select1.close_on_select = false;
+        my_select1.configuration.read_only = false;
+        my_select1.configuration.multiple = true;
+        my_select1.configuration.minimum_input_length = 1;
+        my_select1.configuration.maximum_suggestions_number = 15;
+        my_select1.configuration.close_on_select = false;
+
         my_select1.load_suggestions = Arc::new(my_load_suggestions);
 
         let mut my_select2 = EguiSelect2::default();
 
-        my_select2.read_only = false;
-        my_select2.multiple = true;
-        my_select2.minimum_input_length = 1;
-        my_select2.maximum_suggestions_number = 15;
-        my_select2.close_on_select = false;
+        my_select2.configuration.read_only = false;
+        my_select2.configuration.multiple = true;
+        my_select2.configuration.minimum_input_length = 1;
+        my_select2.configuration.maximum_suggestions_number = 15;
+        my_select2.configuration.close_on_select = false;
+
         my_select2.load_suggestions = Arc::new(my_load_suggestions);
 
         Self {

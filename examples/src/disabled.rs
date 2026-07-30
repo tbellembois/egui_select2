@@ -7,7 +7,9 @@ struct MyApp {
 impl Default for MyApp {
     fn default() -> Self {
         let mut my_select = EguiSelect2::default();
-        my_select.disabled = true;
+
+        my_select.configuration.disabled = true;
+
         my_select.selected = vec![
             SelectItem {
                 id: Some(1),

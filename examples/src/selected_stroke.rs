@@ -1,4 +1,3 @@
-use egui::{Margin, Stroke};
 use egui_select2::select2::{EguiSelect2, SelectItem, SelectItems, SharedSelect2Items};
 use std::{sync::Arc, thread::sleep};
 
@@ -10,12 +9,14 @@ impl Default for MyApp {
     fn default() -> Self {
         let mut my_select = EguiSelect2::default();
 
-        my_select.show_border_when_selected = true;
-        my_select.read_only = false;
-        my_select.multiple = true;
-        my_select.minimum_input_length = 1;
-        my_select.maximum_suggestions_number = 15;
-        my_select.close_on_select = false;
+        my_select.selected_layout.show_border_when_selected = true;
+
+        my_select.configuration.read_only = false;
+        my_select.configuration.multiple = true;
+        my_select.configuration.minimum_input_length = 1;
+        my_select.configuration.maximum_suggestions_number = 15;
+        my_select.configuration.close_on_select = false;
+
         my_select.load_suggestions = Arc::new(my_load_suggestions);
 
         Self { my_select }
@@ -51,16 +52,6 @@ impl eframe::App for MyApp {
         // egui::Window::new("Log").show(ui, |ui| {
         //     egui_logger::logger_ui().show(ui);
         // });
-
-        let visual = &ui.visuals();
-        let selection = &visual.selection;
-
-        self.my_select.border_when_selected_stroke = Stroke {
-            width: 4.0,
-            color: selection.bg_fill,
-        };
-        self.my_select.border_when_selected_margin = Margin::symmetric(5, 5);
-        self.my_select.border_when_selected_corner_radius = 5.0;
 
         egui::CentralPanel::default().show(ui, |ui| {
             self.my_select.check_loading();

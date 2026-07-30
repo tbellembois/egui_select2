@@ -9,9 +9,15 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+const DEFAULT_CLOSE_ON_SELECT: bool = false;
+const DEFAULT_DISABLED: bool = false;
+const DEFAULT_MULTIPLE: bool = false;
+const DEFAULT_READ_ONLY: bool = true;
 const DEFAULT_SCROLL_MIN_HEIGHT: f32 = 400.0;
 const DEFAULT_MINIMUM_INPUT_LENGTH: usize = 1;
 const DEFAULT_MAXIMUM_SUGGESTIONS_NUMBER: usize = 10;
+const DEFAULT_SHOW_BORDER_WHEN_SELECTED: bool = false;
+const DEFAULT_SELECTED_CORNER_RADIUS: f32 = 0.0;
 const DEFAULT_LOADING_TEXT: &str = "Loading";
 const DEFAULT_NO_RESULTS_TEXT: &str = "No results";
 const DEFAULT_ADD_TEXT: &str = "Add";
@@ -26,8 +32,40 @@ pub type FormatSuggestionFn =
     Box<dyn Fn(&mut Ui, bool, &SelectItem) -> egui::Response + Send + Sync>;
 pub type ValidateNewItemFn = Arc<dyn Fn(&str) -> Result<String, String> + Send + Sync>;
 
+/// Widget configuration.
+pub struct Configuration {
+    /// The minimum number of characters required to trigger a suggestion load.
+    pub minimum_input_length: usize,
+    /// The maximum number of suggestions to load at once.
+    pub maximum_suggestions_number: usize,
+    /// Whether to close the widget when a suggestion is selected.
+    pub close_on_select: bool,
+    /// Whether the widget is disabled.
+    pub disabled: bool,
+    /// Whether the widget supports multiple selections.
+    pub multiple: bool,
+    /// The minimum scroll height of the suggestion list.
+    pub scroll_min_height: f32,
+    /// Whether the widget is read-only.
+    pub read_only: bool,
+}
+
+impl Default for Configuration {
+    fn default() -> Self {
+        Self {
+            minimum_input_length: DEFAULT_MINIMUM_INPUT_LENGTH,
+            maximum_suggestions_number: DEFAULT_MAXIMUM_SUGGESTIONS_NUMBER,
+            close_on_select: DEFAULT_CLOSE_ON_SELECT,
+            disabled: DEFAULT_DISABLED,
+            multiple: DEFAULT_MULTIPLE,
+            scroll_min_height: DEFAULT_SCROLL_MIN_HEIGHT,
+            read_only: DEFAULT_READ_ONLY,
+        }
+    }
+}
+
 // Widget translations.
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct Translations {
     pub loading: String,
     pub no_results: String,
@@ -36,6 +74,43 @@ pub struct Translations {
     pub clear_all: String,
     pub load_more: String,
     pub hint: String,
+}
+
+impl Default for Translations {
+    fn default() -> Self {
+        Self {
+            loading: DEFAULT_LOADING_TEXT.to_string(),
+            no_results: DEFAULT_NO_RESULTS_TEXT.to_string(),
+            add: DEFAULT_ADD_TEXT.to_string(),
+            new: DEFAULT_NEW_TEXT.to_string(),
+            clear_all: DEFAULT_CLEAR_ALL_TEXT.to_string(),
+            load_more: DEFAULT_LOAD_MORE_TEXT.to_string(),
+            hint: DEFAULT_HINT_TEXT.to_string(),
+        }
+    }
+}
+
+// Widget selected layout.
+pub struct SelectedLayout {
+    /// Show border around the widget when items are selected.
+    pub show_border_when_selected: bool,
+    /// The stroke style of the border when items are selected.
+    pub border_when_selected_stroke: egui::Stroke,
+    /// The margin of the border when items are selected.
+    pub border_when_selected_margin: egui::Margin,
+    /// The corner radius of the border when items are selected.
+    pub border_when_selected_corner_radius: f32,
+}
+
+impl Default for SelectedLayout {
+    fn default() -> Self {
+        Self {
+            show_border_when_selected: DEFAULT_SHOW_BORDER_WHEN_SELECTED,
+            border_when_selected_stroke: Stroke::default(),
+            border_when_selected_margin: Margin::default(),
+            border_when_selected_corner_radius: DEFAULT_SELECTED_CORNER_RADIUS,
+        }
+    }
 }
 
 /// A select item.
@@ -60,17 +135,6 @@ impl FromIterator<SelectItem> for SelectItems {
         let total = items.len();
         SelectItems { items, total }
     }
-}
-
-/// The behavior of the select2 widget.
-pub struct WidgetBehavior {
-    close_on_select: bool,
-    disabled: bool,
-    maximum_suggestions_number: usize,
-    minimum_input_length: usize,
-    multiple: bool,
-    read_only: bool,
-    translations: Translations,
 }
 
 /// A select2 like widget.
@@ -128,29 +192,11 @@ pub struct EguiSelect2 {
     /// The translations for the widget.
     pub translations: Translations,
 
-    /// The minimum number of characters required to trigger a suggestion load.
-    pub minimum_input_length: usize,
-    /// The maximum number of suggestions to load at once.
-    pub maximum_suggestions_number: usize,
-    /// Whether to close the widget when a suggestion is selected.
-    pub close_on_select: bool,
-    /// Whether the widget is disabled.
-    pub disabled: bool,
-    /// Whether the widget allows multiple selections.
-    pub multiple: bool,
-    /// The scroll min height.
-    pub scroll_min_height: f32,
-    /// Whether the widget is read-only. Setting this to `false` allows the user to enter new items.
-    pub read_only: bool,
+    /// Widget configuration.
+    pub configuration: Configuration,
 
-    /// Show border around the widget when items are selected.
-    pub show_border_when_selected: bool,
-    /// The stroke style of the border when items are selected.
-    pub border_when_selected_stroke: egui::Stroke,
-    /// The margin of the border when items are selected.
-    pub border_when_selected_margin: egui::Margin,
-    /// The corner radius of the border when items are selected.
-    pub border_when_selected_corner_radius: f32,
+    /// Widget selected layout.
+    pub selected_layout: SelectedLayout,
 
     /// The selected items.
     pub selected: Vec<SelectItem>,
@@ -199,23 +245,9 @@ impl Default for EguiSelect2 {
             format_suggestion: Box::new(|ui, selected, select_item| {
                 ui.add(egui::Button::new(&select_item.label).selected(selected))
             }),
-            minimum_input_length: DEFAULT_MINIMUM_INPUT_LENGTH,
-            maximum_suggestions_number: DEFAULT_MAXIMUM_SUGGESTIONS_NUMBER,
-            scroll_min_height: DEFAULT_SCROLL_MIN_HEIGHT,
-            multiple: false,
-            read_only: true,
-            show_border_when_selected: false,
-            close_on_select: true,
-            disabled: false,
-            translations: Translations {
-                loading: DEFAULT_LOADING_TEXT.to_string(),
-                no_results: DEFAULT_NO_RESULTS_TEXT.to_string(),
-                add: DEFAULT_ADD_TEXT.to_string(),
-                new: DEFAULT_NEW_TEXT.to_string(),
-                clear_all: DEFAULT_CLEAR_ALL_TEXT.to_string(),
-                load_more: DEFAULT_LOAD_MORE_TEXT.to_string(),
-                hint: DEFAULT_HINT_TEXT.to_string(),
-            },
+            configuration: Configuration::default(),
+            selected_layout: SelectedLayout::default(),
+            translations: Translations::default(),
 
             // Internal attributes.
             id: rng_string,
@@ -237,35 +269,11 @@ impl Default for EguiSelect2 {
             autocomplete_triggered_for: String::default(),
             validate_new_item: None,
             validation_error: None,
-            border_when_selected_stroke: Stroke::default(),
-            border_when_selected_margin: Margin::default(),
-            border_when_selected_corner_radius: 0.0,
         }
     }
 }
 
 impl EguiSelect2 {
-    /// Creates a new `EguiSelect2` with the given parameters.
-    #[must_use]
-    pub fn new(
-        load_suggestions: LoadSuggestionsFn,
-        format_suggestion: FormatSuggestionFn,
-        widget_behavior: WidgetBehavior,
-    ) -> Self {
-        EguiSelect2 {
-            load_suggestions,
-            format_suggestion,
-            maximum_suggestions_number: widget_behavior.maximum_suggestions_number,
-            read_only: widget_behavior.read_only,
-            minimum_input_length: widget_behavior.minimum_input_length,
-            close_on_select: widget_behavior.close_on_select,
-            disabled: widget_behavior.disabled,
-            multiple: widget_behavior.multiple,
-            translations: widget_behavior.translations,
-            ..Default::default()
-        }
-    }
-
     /// Clear the selected items.
     pub fn clear_selected_items(&mut self) {
         self.selected.clear();
@@ -278,7 +286,7 @@ impl EguiSelect2 {
         if self.request_loading && !self.is_loading {
             let cloned_load_fn = Arc::clone(&self.load_suggestions);
             let cloned_new_suggestions = Arc::clone(&self.pending_suggestions);
-            let limit = self.maximum_suggestions_number;
+            let limit = self.configuration.maximum_suggestions_number;
             let offset = self.offset;
             let query = self.input.clone();
 
@@ -411,7 +419,7 @@ impl EguiSelect2 {
             egui::TextEdit::singleline(&mut self.input).hint_text(&self.translations.hint);
 
         // Manage input widget state based on disabled state.
-        let input_resp = if self.disabled {
+        let input_resp = if self.configuration.disabled {
             ui.add_enabled(false, input_widget)
         } else {
             ui.add(input_widget)
@@ -449,7 +457,7 @@ impl EguiSelect2 {
         // Trigger autocomplete after delay.
         if debounce_delay_passed
             && !self.request_loading
-            && (self.minimum_input_length <= self.input.len())
+            && (self.configuration.minimum_input_length <= self.input.len())
         {
             self.close_suggestions();
             self.autocomplete_triggered_for = self.input.clone();
@@ -555,7 +563,7 @@ impl EguiSelect2 {
                                     .any(|item| item.label == self.input);
 
                                 egui::ScrollArea::vertical()
-                                    .min_scrolled_height(self.scroll_min_height)
+                                    .min_scrolled_height(self.configuration.scroll_min_height)
                                     .id_salt(ui.id().with(format!("scroll_{}", self.id)))
                                     .show(ui, |ui| {
                                         ui.set_width(self.input_rect.width());
@@ -605,7 +613,7 @@ impl EguiSelect2 {
                             }
 
                             if !input_in_suggestions
-                                && !self.read_only
+                                && !self.configuration.read_only
                                 && !self.input.is_empty()
                                 && self.validation_error.is_none()
                             {
@@ -636,7 +644,7 @@ impl EguiSelect2 {
             if is_clicked {
                 // Clear the input and close the suggestions if close_on_select is enabled.
                 self.input.clear();
-                if self.close_on_select {
+                if self.configuration.close_on_select {
                     self.close_suggestions();
                 }
             }
@@ -653,11 +661,11 @@ impl EguiSelect2 {
             let mut frame = egui::Frame::new();
 
             // Border if defined.
-            if self.show_border_when_selected && !self.selected.is_empty() {
+            if self.selected_layout.show_border_when_selected && !self.selected.is_empty() {
                 frame = frame
-                    .stroke(self.border_when_selected_stroke)
-                    .inner_margin(self.border_when_selected_margin)
-                    .corner_radius(self.border_when_selected_corner_radius);
+                    .stroke(self.selected_layout.border_when_selected_stroke)
+                    .inner_margin(self.selected_layout.border_when_selected_margin)
+                    .corner_radius(self.selected_layout.border_when_selected_corner_radius);
             }
 
             frame.show(ui, |ui| {
@@ -761,7 +769,7 @@ impl EguiSelect2 {
                 .iter()
                 .any(|s| s.id == select_item.id && s.label == select_item.label)
         {
-            if self.multiple {
+            if self.configuration.multiple {
                 self.selected.push(select_item);
             } else {
                 self.selected.clear();
