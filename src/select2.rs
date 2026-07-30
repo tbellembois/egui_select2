@@ -1,6 +1,6 @@
 use eframe::egui;
 use egui::{
-    Button, FontId, Pos2, Rect, Ui,
+    Button, FontId, Margin, Pos2, Rect, Stroke, Ui,
     text::{LayoutJob, TextWrapping},
 };
 use serde::{Deserialize, Serialize};
@@ -118,12 +118,18 @@ pub struct WidgetBehavior {
 pub struct EguiSelect2 {
     /// The function to load suggestions.
     pub load_suggestions: LoadSuggestionsFn,
+
     /// The function to format a suggestion in the dropdown.
     pub format_suggestion: FormatSuggestionFn,
+
     /// The function to validate the input text.
     pub validate_new_item: Option<ValidateNewItemFn>,
+
     /// The translations for the widget.
     pub translations: Translations,
+
+    /// The minimum number of characters required to trigger a suggestion load.
+    pub minimum_input_length: usize,
     /// The maximum number of suggestions to load at once.
     pub maximum_suggestions_number: usize,
     /// Whether to close the widget when a suggestion is selected.
@@ -132,18 +138,26 @@ pub struct EguiSelect2 {
     pub disabled: bool,
     /// Whether the widget allows multiple selections.
     pub multiple: bool,
-    /// Show border around the widget.
-    pub show_border: bool,
-    /// The minimum number of characters required to trigger a suggestion load.
-    pub minimum_input_length: usize,
-    /// The selected items.
-    pub selected: Vec<SelectItem>,
     /// The scroll min height.
     pub scroll_min_height: f32,
     /// Whether the widget is read-only. Setting this to `false` allows the user to enter new items.
     pub read_only: bool,
+
+    /// Show border around the widget when items are selected.
+    pub show_border_when_selected: bool,
+    /// The stroke style of the border when items are selected.
+    pub border_when_selected_stroke: egui::Stroke,
+    /// The margin of the border when items are selected.
+    pub border_when_selected_margin: egui::Margin,
+    /// The corner radius of the border when items are selected.
+    pub border_when_selected_corner_radius: f32,
+
+    /// The selected items.
+    pub selected: Vec<SelectItem>,
+
     /// The suggestions to display.
     pub suggestions: SharedSelect2Items,
+
     /// The input text.
     input: String,
     /// The validation error, if any.
@@ -190,7 +204,7 @@ impl Default for EguiSelect2 {
             scroll_min_height: DEFAULT_SCROLL_MIN_HEIGHT,
             multiple: false,
             read_only: true,
-            show_border: false,
+            show_border_when_selected: false,
             close_on_select: true,
             disabled: false,
             translations: Translations {
@@ -223,6 +237,9 @@ impl Default for EguiSelect2 {
             autocomplete_triggered_for: String::default(),
             validate_new_item: None,
             validation_error: None,
+            border_when_selected_stroke: Stroke::default(),
+            border_when_selected_margin: Margin::default(),
+            border_when_selected_corner_radius: 0.0,
         }
     }
 }
@@ -632,18 +649,15 @@ impl EguiSelect2 {
         let response = ui.vertical(|ui| {
             let cloned_suggestions = Arc::clone(&self.suggestions);
 
-            // Styles.
-            let widgets = &ui.visuals().widgets;
-            let style = &ui.style();
-            let normal_stroke = widgets.noninteractive.bg_stroke;
-            let corner_radius = style.visuals.menu_corner_radius;
-
             // Main frame.
-            let mut frame = egui::Frame::new().corner_radius(corner_radius);
+            let mut frame = egui::Frame::new();
 
             // Border if defined.
-            if self.show_border {
-                frame = frame.stroke(normal_stroke);
+            if self.show_border_when_selected && !self.selected.is_empty() {
+                frame = frame
+                    .stroke(self.border_when_selected_stroke)
+                    .inner_margin(self.border_when_selected_margin)
+                    .corner_radius(self.border_when_selected_corner_radius);
             }
 
             frame.show(ui, |ui| {

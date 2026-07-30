@@ -47,6 +47,10 @@ name = "basic"
 path = "examples/src/basic.rs"
 
 [[example]]
+name = "selected_stroke"
+path = "examples/src/selected_stroke.rs"
+
+[[example]]
 name = "pictures"
 path = "examples/src/pictures.rs"
 
