@@ -91,6 +91,7 @@ impl Default for Translations {
 }
 
 // Widget selected layout.
+#[derive(Debug)]
 pub struct SelectedLayout {
     /// Show border around the widget when items are selected.
     pub show_border_when_selected: bool,
