@@ -26,8 +26,8 @@ struct_excessive_bools = "allow"
 too_many_lines = "allow"
 
 [dependencies]
-eframe = { version = "0.35.0" }
-egui = { version = "0.35.0", default-features = false }
+eframe = { version = "0.36.2" }
+egui = { version = "0.36.2", default-features = false }
 log =  { version = "0.4.29", default-features = false }
 rand = { version = "0.7", default-features = false, features = ["wasm-bindgen", "std"] }
 serde = { version = "1", default-features = false, features = ["derive"] }
@@ -37,7 +37,7 @@ serde_json = { version = "1.0.150", default-features = false, features = ["std"]
 wasm-bindgen-futures = "0.4.68"
 
 [dev-dependencies]
-egui_extras = { version = "0.35.0", features = ["all_loaders"] }
+egui_extras = { version = "0.36.2", features = ["all_loaders"] }
 image = { version = "0.25", features = ["png"] }
 ehttp = "0.7.1"
 egui_logger = "0.10.0"

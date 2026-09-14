@@ -91,7 +91,7 @@ impl Default for Translations {
 }
 
 // Widget selected layout.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SelectedLayout {
     /// Show border around the widget when items are selected.
     pub show_border_when_selected: bool,
@@ -275,6 +275,20 @@ impl Default for EguiSelect2 {
 }
 
 impl EguiSelect2 {
+    /// Create a new `EguiSelect2` widget.
+    pub fn new(
+        load_suggestions: LoadSuggestionsFn,
+        translations: Translations,
+        hint: &str,
+    ) -> Self {
+        let mut this = Self::default();
+        this.load_suggestions = load_suggestions;
+        this.translations = translations;
+        this.translations.hint = hint.to_string();
+
+        this
+    }
+
     /// Clear the selected items.
     pub fn clear_selected_items(&mut self) {
         self.selected.clear();
