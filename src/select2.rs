@@ -293,15 +293,14 @@ impl EguiSelect2 {
     pub fn new(
         load_suggestions: LoadSuggestionsFn,
         hint: &str,
+        translations: Option<Translations>,
         format_suggestion: Option<FormatSuggestionFn>,
         validate_new_item: Option<ValidateNewItemFn>,
-        translations: Option<Translations>,
         configuration: Option<Configuration>,
         selected_layout: Option<SelectedLayout>,
     ) -> Self {
         let mut this = Self::default();
         this.load_suggestions = load_suggestions;
-        this.translations.hint = hint.to_string();
 
         if let Some(format_suggestion) = format_suggestion {
             this.format_suggestion = format_suggestion;
@@ -311,6 +310,8 @@ impl EguiSelect2 {
         this.translations = translations.unwrap_or_default();
         this.configuration = configuration.unwrap_or_default();
         this.selected_layout = selected_layout.unwrap_or_default();
+
+        this.translations.hint = hint.to_string();
 
         this
     }
