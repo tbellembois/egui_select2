@@ -249,6 +249,7 @@ impl Default for EguiSelect2 {
             configuration: Configuration::default(),
             selected_layout: SelectedLayout::default(),
             translations: Translations::default(),
+            validate_new_item: None,
 
             // Internal attributes.
             id: rng_string,
@@ -268,23 +269,48 @@ impl Default for EguiSelect2 {
             open: false,
             last_edit_time: 0.0,
             autocomplete_triggered_for: String::default(),
-            validate_new_item: None,
             validation_error: None,
         }
     }
 }
 
 impl EguiSelect2 {
-    /// Create a new `EguiSelect2` widget.
+    /// Create a new `EguiSelect2` widget with custom configuration.
+    ///
+    /// # Arguments
+    ///
+    /// * `load_suggestions` - Function called to load suggestions when the user types in the input field.
+    /// * `hint` - Placeholder text shown when the input field is empty.
+    /// * `format_suggestion` - Optional function to customize how suggestions are displayed in the dropdown.
+    /// * `validate_new_item` - Optional function to validate custom text entered by the user.
+    /// * `translations` - Optional translations for UI text elements like buttons and messages.
+    /// * `configuration` - Optional configuration for widget behavior like minimum input length and maximum suggestions.
+    /// * `selected_layout` - Optional configuration for the appearance of selected items.
+    ///
+    /// # Returns
+    ///
+    /// A new `EguiSelect2` instance configured with the provided parameters and default values for any unspecified fields.
     pub fn new(
         load_suggestions: LoadSuggestionsFn,
-        translations: Translations,
         hint: &str,
+        format_suggestion: Option<FormatSuggestionFn>,
+        validate_new_item: Option<ValidateNewItemFn>,
+        translations: Option<Translations>,
+        configuration: Option<Configuration>,
+        selected_layout: Option<SelectedLayout>,
     ) -> Self {
         let mut this = Self::default();
         this.load_suggestions = load_suggestions;
-        this.translations = translations;
         this.translations.hint = hint.to_string();
+
+        if let Some(format_suggestion) = format_suggestion {
+            this.format_suggestion = format_suggestion;
+        }
+
+        this.validate_new_item = validate_new_item;
+        this.translations = translations.unwrap_or_default();
+        this.configuration = configuration.unwrap_or_default();
+        this.selected_layout = selected_layout.unwrap_or_default();
 
         this
     }
