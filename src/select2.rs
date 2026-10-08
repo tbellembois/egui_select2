@@ -9,7 +9,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-const DEFAULT_CLOSE_ON_SELECT: bool = false;
+const DEFAULT_CLOSE_ON_SELECT: bool = true;
 const DEFAULT_DISABLED: bool = false;
 const DEFAULT_MULTIPLE: bool = false;
 const DEFAULT_READ_ONLY: bool = true;
