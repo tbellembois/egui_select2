@@ -25,6 +25,7 @@ const DEFAULT_NEW_TEXT: &str = "New";
 const DEFAULT_CLEAR_ALL_TEXT: &str = "Clear all";
 const DEFAULT_LOAD_MORE_TEXT: &str = "Load more results";
 const DEFAULT_HINT_TEXT: &str = "Search";
+const DEFAULT_MULTI_VALUED_TEXT: &str = "Multi-valued";
 
 pub type SharedSelect2Items = Arc<Mutex<Option<SelectItems>>>;
 pub type LoadSuggestionsFn = Arc<dyn Fn(&SharedSelect2Items, usize, usize, &str) + Send + Sync>;
@@ -74,6 +75,7 @@ pub struct Translations {
     pub clear_all: String,
     pub load_more: String,
     pub hint: String,
+    pub multi_valued: String,
 }
 
 impl Default for Translations {
@@ -86,6 +88,7 @@ impl Default for Translations {
             clear_all: DEFAULT_CLEAR_ALL_TEXT.to_string(),
             load_more: DEFAULT_LOAD_MORE_TEXT.to_string(),
             hint: DEFAULT_HINT_TEXT.to_string(),
+            multi_valued: DEFAULT_MULTI_VALUED_TEXT.to_string(),
         }
     }
 }
@@ -457,8 +460,16 @@ impl EguiSelect2 {
 
     // Render the input text field.
     fn render_input(&mut self, ui: &mut egui::Ui) -> egui::Response {
-        let input_widget =
-            egui::TextEdit::singleline(&mut self.input).hint_text(&self.translations.hint);
+        let hint_text = if self.configuration.multiple {
+            format!(
+                "{} [ {} ]",
+                self.translations.hint, self.translations.multi_valued
+            )
+        } else {
+            self.translations.clone().hint
+        };
+
+        let input_widget = egui::TextEdit::singleline(&mut self.input).hint_text(&hint_text);
 
         // Manage input widget state based on disabled state.
         let input_resp = if self.configuration.disabled {
