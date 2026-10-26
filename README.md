@@ -134,25 +134,13 @@ pub struct Translations {
 
 - `format_suggestion: FormatSuggestionFn` The function to format a suggestion in the dropdown. OPTIONAL - default is a simple string.
 
-- `pub validate_new_item: ValidateNewItemFn` The function to validate a new item entered by the user. OPTIONAL - default is no validation.
+- `validate_new_item: Option<ValidateNewItemFn>` The function to validate a new item entered by the user. OPTIONAL - default is no validation.
 
-- `maximum_suggestions_number: usize` The maximum number of suggestions to load at once. OPTIONAL - default is 10.
+- `translations: Translations` The translations to use for the widget. OPTIONAL - default is English strings.
 
-- `minimum_input_length: usize` The minimum number of characters required to trigger a suggestion load. OPTIONAL - default is 1.
+- `configuration: Configuration` The widget configuration. OPTIONAL - default is all default values.
 
-- `scroll_min_height: f32` The scroll min height. OPTIONAL - default is 400px.
-
-- `read_only: bool` Whether the widget is read-only. Setting this to `false` allows the user to enter new items. OPTIONAL - default is `true`.
-
-- `close_on_select` Whether to close the widget when a suggestion is selected. OPTIONAL - default is `true`.
-
-- `disabled` Whether the widget is disabled. OPTIONAL - default is `false`.
-
-- `multiple` Whether the widget allows multiple selections. OPTIONAL - default is `false`.
-
-- `show_border` Whether to show a border around the widget. OPTIONAL - default is `false`.
-
-- `translations` The translations to use for the widget. OPTIONAL - default is no translations.
+- `selected_layout: SelectedLayout` The layout configuration for selected items. OPTIONAL - default is all default values.
 
 ## Selected values
 

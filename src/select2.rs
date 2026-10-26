@@ -15,6 +15,7 @@ const DEFAULT_MULTIPLE: bool = false;
 const DEFAULT_READ_ONLY: bool = true;
 const DEFAULT_SCROLL_MIN_HEIGHT: f32 = 400.0;
 const DEFAULT_MINIMUM_INPUT_LENGTH: usize = 1;
+const DEFAULT_MIN_SIZE: egui::Vec2 = egui::Vec2::new(0.0, 0.0);
 const DEFAULT_MAXIMUM_SUGGESTIONS_NUMBER: usize = 10;
 const DEFAULT_SHOW_BORDER_WHEN_SELECTED: bool = false;
 const DEFAULT_SELECTED_CORNER_RADIUS: f32 = 0.0;
@@ -47,6 +48,8 @@ pub struct Configuration {
     pub multiple: bool,
     /// The minimum scroll height of the suggestion list.
     pub scroll_min_height: f32,
+    /// The minimum size of the widget.
+    pub min_size: egui::Vec2,
     /// Whether the widget is read-only.
     pub read_only: bool,
 }
@@ -60,6 +63,7 @@ impl Default for Configuration {
             disabled: DEFAULT_DISABLED,
             multiple: DEFAULT_MULTIPLE,
             scroll_min_height: DEFAULT_SCROLL_MIN_HEIGHT,
+            min_size: DEFAULT_MIN_SIZE,
             read_only: DEFAULT_READ_ONLY,
         }
     }
@@ -440,7 +444,9 @@ impl EguiSelect2 {
                     };
 
                     // 3. Pass the Job directly to Button::new
-                    let button = Button::new(job).truncate();
+                    let button = Button::new(job)
+                        .truncate()
+                        .min_size(self.configuration.min_size);
 
                     // 4. Add with fixed size
                     let response = ui
@@ -476,7 +482,9 @@ impl EguiSelect2 {
             self.translations.clone().hint
         };
 
-        let input_widget = egui::TextEdit::singleline(&mut self.input).hint_text(&hint_text);
+        let input_widget = egui::TextEdit::singleline(&mut self.input)
+            .hint_text(&hint_text)
+            .min_size(self.configuration.min_size);
 
         // Manage input widget state based on disabled state.
         let input_resp = if self.configuration.disabled {
