@@ -247,7 +247,12 @@ impl Default for EguiSelect2 {
             // Customizable parameters.
             load_suggestions: Arc::new(|_, _, _, _| ()),
             format_suggestion: Box::new(|ui, selected, select_item| {
-                ui.add(egui::Button::new(&select_item.label).selected(selected))
+                ui.add(
+                    egui::Button::new(&select_item.label)
+                        .selected(selected)
+                        .stroke(Stroke::NONE)
+                        .min_size(egui::vec2(ui.available_width(), 0.0)),
+                )
             }),
             configuration: Configuration::default(),
             selected_layout: SelectedLayout::default(),
@@ -302,8 +307,10 @@ impl EguiSelect2 {
         configuration: Option<Configuration>,
         selected_layout: Option<SelectedLayout>,
     ) -> Self {
-        let mut this = Self::default();
-        this.load_suggestions = load_suggestions;
+        let mut this = EguiSelect2 {
+            load_suggestions,
+            ..Default::default()
+        };
 
         if let Some(format_suggestion) = format_suggestion {
             this.format_suggestion = format_suggestion;
@@ -587,110 +594,115 @@ impl EguiSelect2 {
         if self.open && self.validation_error.is_none() {
             let mut is_clicked = false;
 
-            let popup_response = egui::Area::new(egui::Id::new(format!("popup_area_{}", self.id)))
-                .fixed_pos(
-                    self.input_rect.left_top() + egui::vec2(0.0, self.input_rect.height() + 0.2),
-                )
-                .default_width(self.input_rect.width())
-                .show(ui, |ui| {
-                    egui::Frame::new()
-                        .fill(bg_fill)
-                        .stroke(egui::Stroke::new(1.0, bg_stroke.color))
-                        .show(ui, |ui| {
-                            ui.set_width(self.input_rect.width());
+            let popup_response =
+                egui::Area::new(egui::Id::unique(format!("popup_area_{}", self.id)))
+                    .fixed_pos(
+                        self.input_rect.left_top()
+                            + egui::vec2(0.0, self.input_rect.height() + 0.2),
+                    )
+                    .default_width(self.input_rect.width())
+                    .show(ui, |ui| {
+                        egui::Frame::new()
+                            .fill(bg_fill)
+                            .stroke(egui::Stroke::new(1.0, bg_stroke.color))
+                            .show(ui, |ui| {
+                                ui.set_width(self.input_rect.width());
 
-                            let Ok(locked_suggestions) = suggestions.try_lock() else {
-                                log::error!("locked_suggestions lock error");
-                                return;
-                            };
+                                let Ok(locked_suggestions) = suggestions.try_lock() else {
+                                    log::error!("locked_suggestions lock error");
+                                    return;
+                                };
 
-                            let mut input_in_suggestions = false;
+                                let mut input_in_suggestions = false;
 
-                            if let Some(suggestions) = locked_suggestions.as_ref()
-                                && suggestions.total > 0
-                            {
-                                let mut clicked_index = None;
-                                input_in_suggestions = suggestions
-                                    .items
-                                    .iter()
-                                    .any(|item| item.label == self.input);
+                                if let Some(suggestions) = locked_suggestions.as_ref()
+                                    && suggestions.total > 0
+                                {
+                                    let mut clicked_index = None;
+                                    input_in_suggestions = suggestions
+                                        .items
+                                        .iter()
+                                        .any(|item| item.label == self.input);
 
-                                egui::ScrollArea::vertical()
-                                    .min_scrolled_height(self.configuration.scroll_min_height)
-                                    .id_salt(ui.id().with(format!("scroll_{}", self.id)))
-                                    .show(ui, |ui| {
-                                        ui.set_width(self.input_rect.width());
+                                    egui::ScrollArea::vertical()
+                                        .min_scrolled_height(self.configuration.scroll_min_height)
+                                        .id_salt(egui::Id::unique(format!("scroll_{}", self.id)))
+                                        .show(ui, |ui| {
+                                            ui.set_width(self.input_rect.width());
 
-                                        for (i, item) in suggestions.items.iter().enumerate() {
-                                            let selected = self.highlighted == Some(i);
-                                            let resp = (self.format_suggestion)(ui, selected, item);
+                                            for (i, item) in suggestions.items.iter().enumerate() {
+                                                let selected = self.highlighted == Some(i);
+                                                let resp =
+                                                    (self.format_suggestion)(ui, selected, item);
 
-                                            if resp.clicked() {
-                                                clicked_index = Some(i);
-                                            }
-
-                                            if selected
-                                                && ui.input(|i| {
-                                                    i.key_pressed(egui::Key::ArrowDown)
-                                                        || i.key_pressed(egui::Key::ArrowUp)
-                                                })
-                                            {
-                                                resp.scroll_to_me(Some(egui::Align::Center));
-                                            }
-                                        }
-
-                                        ui.add_space(10.0);
-
-                                        // Request the next page of suggestions.
-                                        ui.with_layout(
-                                            egui::Layout::top_down_justified(egui::Align::Center),
-                                            |ui| {
-                                                if self.has_more
-                                                    && !self.request_loading
-                                                    && ui
-                                                        .link(&self.translations.load_more)
-                                                        .clicked()
-                                                {
-                                                    self.request_loading = true;
+                                                if resp.clicked() {
+                                                    clicked_index = Some(i);
                                                 }
-                                            },
-                                        );
-                                    });
 
-                                if let Some(i) = clicked_index {
-                                    self.select_index(i, suggestions);
-                                    is_clicked = true;
-                                }
-                            } else {
-                                ui.label(&self.translations.no_results);
-                            }
+                                                if selected
+                                                    && ui.input(|i| {
+                                                        i.key_pressed(egui::Key::ArrowDown)
+                                                            || i.key_pressed(egui::Key::ArrowUp)
+                                                    })
+                                                {
+                                                    resp.scroll_to_me(Some(egui::Align::Center));
+                                                }
+                                            }
 
-                            if !input_in_suggestions
-                                && !self.configuration.read_only
-                                && !self.input.is_empty()
-                                && self.validation_error.is_none()
-                            {
-                                let frame = egui::Frame::new()
-                                    .fill(extreme_bg_color)
-                                    .inner_margin(5.0)
-                                    .outer_margin(10.0)
-                                    .corner_radius(corner_radius)
-                                    .stroke(bg_stroke);
+                                            ui.add_space(10.0);
 
-                                frame.show(ui, |ui| {
-                                    if ui
-                                        .link(format!(
-                                            "{} \"{}\"",
-                                            self.translations.add, self.input
-                                        ))
-                                        .clicked()
-                                    {
-                                        self.add_new();
+                                            // Request the next page of suggestions.
+                                            ui.with_layout(
+                                                egui::Layout::top_down_justified(
+                                                    egui::Align::Center,
+                                                ),
+                                                |ui| {
+                                                    if self.has_more
+                                                        && !self.request_loading
+                                                        && ui
+                                                            .link(&self.translations.load_more)
+                                                            .clicked()
+                                                    {
+                                                        self.request_loading = true;
+                                                    }
+                                                },
+                                            );
+                                        });
+
+                                    if let Some(i) = clicked_index {
+                                        self.select_index(i, suggestions);
+                                        is_clicked = true;
                                     }
-                                });
-                            }
-                        });
-                });
+                                } else {
+                                    ui.label(&self.translations.no_results);
+                                }
+
+                                if !input_in_suggestions
+                                    && !self.configuration.read_only
+                                    && !self.input.is_empty()
+                                    && self.validation_error.is_none()
+                                {
+                                    let frame = egui::Frame::new()
+                                        .fill(extreme_bg_color)
+                                        .inner_margin(5.0)
+                                        .outer_margin(10.0)
+                                        .corner_radius(corner_radius)
+                                        .stroke(bg_stroke);
+
+                                    frame.show(ui, |ui| {
+                                        if ui
+                                            .link(format!(
+                                                "{} \"{}\"",
+                                                self.translations.add, self.input
+                                            ))
+                                            .clicked()
+                                        {
+                                            self.add_new();
+                                        }
+                                    });
+                                }
+                            });
+                    });
 
             response = Some(popup_response.response);
 
